@@ -23,6 +23,6 @@ async fn serve_static(f: StaticFile, _: ()) -> impl Responder {
 pub fn routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/").route(web::get().to(|| serve_static(StaticFile::Index, ()))));
     cfg.service(
-        web::resource("/elm.js").route(web::get().to(|| serve_static(StaticFile::Elm, ()))),
+        web::resource("/assets/elm.js").route(web::get().to(|| serve_static(StaticFile::Elm, ()))),
     );
 }
