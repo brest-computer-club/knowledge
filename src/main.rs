@@ -1,6 +1,7 @@
 use std::thread;
 
 mod api;
+mod domain;
 mod uc;
 mod walker;
 
