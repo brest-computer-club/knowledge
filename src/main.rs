@@ -1,15 +1,25 @@
+use std::env;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 mod api;
-mod domain;
 mod uc;
 mod walker;
 
 fn main() -> std::io::Result<()> {
-    thread::spawn(|| {
-        let w = &walker::local::W;
-        let _ = uc::graph::build(w);
-    });
+    {
+        let path = env::current_dir()?;
 
-    api::server::start_server(8080)
+        thread::spawn(move || {
+            let i = uc::Interactor {
+                visitor: &uc::FileVisitor {
+                    files: Arc::new(Mutex::new(vec![])),
+                },
+            };
+
+            i.build_graph(&path.as_path(), &walker::W);
+        });
+    }
+
+    api::start_server(8080)
 }
