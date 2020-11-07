@@ -1,5 +1,4 @@
 use std::env;
-use std::sync::{Arc, Mutex};
 use std::thread;
 
 mod api;
@@ -12,9 +11,7 @@ fn main() -> std::io::Result<()> {
 
         thread::spawn(move || {
             let i = uc::Interactor {
-                visitor: &uc::FileVisitor {
-                    files: Arc::new(Mutex::new(vec![])),
-                },
+                visitor: &uc::FileVisitor::new(),
             };
 
             i.build_graph(&path.as_path(), &walker::W);
