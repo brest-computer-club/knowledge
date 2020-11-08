@@ -2,20 +2,15 @@ use std::env;
 use std::thread;
 
 mod api;
+mod metadata_extractor;
+mod metadata_handler;
+mod tree_traverser;
 mod uc;
-mod walker;
 
 fn main() -> std::io::Result<()> {
     {
-        let path = env::current_dir()?;
-
-        thread::spawn(move || {
-            let i = uc::Interactor {
-                visitor: &uc::FileVisitor::new(),
-            };
-
-            i.build_graph(&path.as_path(), &walker::W);
-        });
+        let p = env::current_dir()?;
+        thread::spawn(move || uc::build_graph(&p));
     }
 
     api::start_server(8080)
