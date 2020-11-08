@@ -9,38 +9,34 @@ pub fn watch(rch: &Receiver<PathBuf>, fchan: &Sender<PathBuf>, dchan: &Sender<Pa
             Ok(p) => {
                 let fc = Sender::clone(fchan);
                 let dc = Sender::clone(dchan);
-                thread::spawn(move || Handler.handle(&p.clone(), &fc, &dc));
+                thread::spawn(move || traverse_tree(&p.clone(), &fc, &dc));
             }
             Err(e) => {
-                println!("dir_dispatch err: {}", e);
+                println!("tree_traverser watch err: {}", e);
                 continue;
             }
         };
     }
 }
 
-struct Handler;
+fn traverse_tree(dir: &PathBuf, fchan: &Sender<PathBuf>, dchan: &Sender<PathBuf>) {
+    if dir.is_dir() {
+        let ee = match fs::read_dir(dir) {
+            Err(_) => return,
+            Ok(ee) => ee,
+        };
 
-impl Handler {
-    fn handle(&self, dir: &PathBuf, fchan: &Sender<PathBuf>, dchan: &Sender<PathBuf>) {
-        if dir.is_dir() {
-            let ee = match fs::read_dir(dir) {
-                Err(_) => return,
-                Ok(ee) => ee,
+        for entry in ee {
+            let entry = match entry {
+                Ok(e) => e,
+                Err(_) => continue, // we just skip the entry in case of problem
             };
 
-            for entry in ee {
-                let entry = match entry {
-                    Ok(e) => e,
-                    Err(_) => continue, // we just skip the entry in case of problem
-                };
-
-                let path = entry.path();
-                if path.is_dir() {
-                    let _ = dchan.send(path);
-                } else {
-                    let _ = fchan.send(path);
-                }
+            let path = entry.path();
+            if path.is_dir() {
+                let _ = dchan.send(path);
+            } else {
+                let _ = fchan.send(path);
             }
         }
     }
