@@ -1,7 +1,8 @@
+use crate::domain::Metadata;
 use std::sync::mpsc::Receiver;
 use std::thread;
 
-pub fn watch(rch: &Receiver<String>) {
+pub fn watch(rch: &Receiver<Metadata>) {
     loop {
         match rch.recv() {
             Ok(p) => {
@@ -15,6 +16,6 @@ pub fn watch(rch: &Receiver<String>) {
     }
 }
 
-fn store_metadata(e: &String) {
+fn store_metadata(e: &Metadata) {
     println!("meta {:?}", e);
 }

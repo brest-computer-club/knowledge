@@ -2,6 +2,7 @@ use std::env;
 use std::thread;
 
 mod api;
+mod domain;
 mod file_handler;
 mod metadata_handler;
 mod tree_traverser;

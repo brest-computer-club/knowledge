@@ -1,9 +1,10 @@
+use crate::domain::Metadata;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 
-pub fn watch(rch: &Receiver<PathBuf>, metach: &Sender<String>) {
+pub fn watch(rch: &Receiver<PathBuf>, metach: &Sender<Metadata>) {
     loop {
         match rch.recv() {
             Ok(p) => {
@@ -18,11 +19,14 @@ pub fn watch(rch: &Receiver<PathBuf>, metach: &Sender<String>) {
     }
 }
 
-fn get_metadata(e: &PathBuf, metach: &Sender<String>) {
+fn get_metadata(e: &PathBuf, metach: &Sender<Metadata>) {
     let meta = match fs::metadata(e) {
         Ok(m) => m,
         Err(_) => return,
     };
 
-    let _ = metach.send(format!("{:?}", meta.permissions()));
+    let _ = metach.send(Metadata::new(
+        e.clone(),
+        format!("{:?}", meta.permissions()),
+    ));
 }

@@ -1,3 +1,4 @@
+use crate::domain::Metadata;
 use crate::file_handler;
 use crate::metadata_handler;
 use crate::tree_traverser;
@@ -9,7 +10,7 @@ use std::thread;
 pub fn build_graph(p: &PathBuf) {
     let (dir_send, dir_recv): (Sender<PathBuf>, Receiver<PathBuf>) = channel();
     let (file_send, file_recv): (Sender<PathBuf>, Receiver<PathBuf>) = channel();
-    let (meta_send, meta_recv): (Sender<String>, Receiver<String>) = channel();
+    let (meta_send, meta_recv): (Sender<Metadata>, Receiver<Metadata>) = channel();
 
     let ds = dir_send.clone();
     thread::spawn(move || tree_traverser::watch(&dir_recv, &file_send, &ds));
