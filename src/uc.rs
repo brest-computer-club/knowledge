@@ -1,4 +1,4 @@
-use crate::metadata_extractor;
+use crate::file_handler;
 use crate::metadata_handler;
 use crate::tree_traverser;
 
@@ -13,7 +13,7 @@ pub fn build_graph(p: &PathBuf) {
 
     let ds = dir_send.clone();
     thread::spawn(move || tree_traverser::watch(&dir_recv, &file_send, &ds));
-    thread::spawn(move || metadata_extractor::watch(&file_recv, &meta_send));
+    thread::spawn(move || file_handler::watch(&file_recv, &meta_send));
     thread::spawn(move || metadata_handler::watch(&meta_recv));
 
     let _ = dir_send.send(p.clone());

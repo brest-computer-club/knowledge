@@ -2,7 +2,7 @@ use std::env;
 use std::thread;
 
 mod api;
-mod metadata_extractor;
+mod file_handler;
 mod metadata_handler;
 mod tree_traverser;
 mod uc;

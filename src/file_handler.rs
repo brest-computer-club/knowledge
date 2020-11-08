@@ -8,7 +8,7 @@ pub fn watch(rch: &Receiver<PathBuf>, metach: &Sender<String>) {
         match rch.recv() {
             Ok(p) => {
                 let mc = Sender::clone(metach);
-                thread::spawn(move || Handler.handle(&p.clone(), &mc));
+                thread::spawn(move || Handler.get_metadata(&p.clone(), &mc));
             }
             Err(e) => {
                 println!("file_dispatch err: {}", e);
@@ -21,7 +21,7 @@ pub fn watch(rch: &Receiver<PathBuf>, metach: &Sender<String>) {
 struct Handler;
 
 impl Handler {
-    fn handle(&self, e: &PathBuf, metach: &Sender<String>) {
+    fn get_metadata(&self, e: &PathBuf, metach: &Sender<String>) {
         let meta = match fs::metadata(e) {
             Ok(m) => m,
             Err(_) => return,
