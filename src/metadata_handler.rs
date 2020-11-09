@@ -1,6 +1,7 @@
-use crate::domain::Metadata;
 use std::sync::mpsc::Receiver;
 use std::thread;
+
+use crate::domain::Metadata;
 
 pub fn watch(rch: &Receiver<Metadata>) {
     loop {

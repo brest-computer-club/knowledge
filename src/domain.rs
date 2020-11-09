@@ -3,10 +3,16 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 pub struct Metadata {
     path: PathBuf,
-    permissions: String,
+    title: String,
+    tags: Vec<String>,
 }
+
 impl Metadata {
-    pub fn new(path: PathBuf, permissions: String) -> Metadata {
-        Metadata { path, permissions }
+    pub fn new(path: PathBuf, title: &String, tags: &Vec<String>) -> Metadata {
+        Metadata {
+            path,
+            title: title.clone(),
+            tags: tags.clone(),
+        }
     }
 }

@@ -1,7 +1,6 @@
 use actix_web::{web, HttpResponse, Responder};
-use rust_embed::RustEmbed;
-
 use actix_web::{App, HttpServer};
+use rust_embed::RustEmbed;
 
 #[actix_web::main]
 pub async fn start_server(port: u32) -> std::io::Result<()> {

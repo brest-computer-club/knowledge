@@ -10,6 +10,7 @@ actix-web = "3"
 partial_application = "0.2.1"
 webbrowser = "0.5.5"
 log = "0.4.11"
+yaml-rust = "0.4.4"
 
 [dev_dependencies]
 tempfile = "3"
