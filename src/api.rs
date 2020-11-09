@@ -1,16 +1,15 @@
 use actix_web::{web, HttpResponse, Responder};
-use actix_web::{App, HttpServer};
 use rust_embed::RustEmbed;
 
-#[actix_web::main]
-pub async fn start_server(port: u32) -> std::io::Result<()> {
-    let address = format!("127.0.0.1:{}", port);
-    println!("listening on http://localhost:{}", port);
+pub fn front_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("/").route(web::get().to(|| serve_static(StaticFile::Index, ()))));
+    cfg.service(
+        web::resource("/assets/elm.js").route(web::get().to(|| serve_static(StaticFile::Elm, ()))),
+    );
+}
 
-    HttpServer::new(|| App::new().configure(front_routes))
-        .bind(address)?
-        .run()
-        .await
+pub fn back_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(web::resource("/tag/{tag}").route(web::get().to(|| get_by_tag())));
 }
 
 // frontend routes
@@ -33,9 +32,7 @@ async fn serve_static(f: StaticFile, _: ()) -> impl Responder {
     HttpResponse::Ok().body(file)
 }
 
-fn front_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(web::resource("/").route(web::get().to(|| serve_static(StaticFile::Index, ()))));
-    cfg.service(
-        web::resource("/assets/elm.js").route(web::get().to(|| serve_static(StaticFile::Elm, ()))),
-    );
+// back routes
+async fn get_by_tag() -> impl Responder {
+    HttpResponse::Ok()
 }

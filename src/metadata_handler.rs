@@ -1,13 +1,13 @@
 use std::sync::mpsc::Receiver;
-use std::thread;
 
 use crate::domain::Metadata;
+use crate::storage;
 
-pub fn watch(rch: &Receiver<Metadata>) {
+pub fn watch(rch: &Receiver<Metadata>, store: &storage::Store) {
     loop {
         match rch.recv() {
             Ok(p) => {
-                thread::spawn(move || store_metadata(&p.clone()));
+                store.insert(&p.clone());
             }
             Err(e) => {
                 println!("metadata watch err: {}", e);
@@ -15,9 +15,4 @@ pub fn watch(rch: &Receiver<Metadata>) {
             }
         };
     }
-}
-
-fn store_metadata(e: &Metadata) {
-    println!("meta {:?}", e);
-    println!("meta tags {:?}", e.tags);
 }
