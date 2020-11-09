@@ -19,4 +19,5 @@ pub fn watch(rch: &Receiver<Metadata>) {
 
 fn store_metadata(e: &Metadata) {
     println!("meta {:?}", e);
+    println!("meta tags {:?}", e.tags);
 }

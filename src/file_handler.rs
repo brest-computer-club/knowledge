@@ -2,7 +2,7 @@ extern crate yaml_rust;
 use yaml_rust::YamlLoader;
 
 use std::fs::File;
-use std::io::{prelude::*, BufReader, Lines};
+use std::io::{prelude::*, BufReader, Error as ioErr, ErrorKind, Lines};
 use std::path::PathBuf;
 use std::str;
 use std::sync::mpsc::{Receiver, Sender};
@@ -27,62 +27,71 @@ pub fn watch(rch: &Receiver<PathBuf>, metach: &Sender<Metadata>) {
     }
 }
 
-fn get_metadata(e: &PathBuf, metach: &Sender<Metadata>) {
-    let file = match File::open(e) {
-        Ok(f) => f,
-        _ => return,
+fn get_metadata(e: &PathBuf, metach: &Sender<Metadata>) -> Result<(), ioErr> {
+    let file = File::open(e)?;
+    let reader = BufReader::new(file);
+    let yaml = get_yaml_header(reader.lines())?;
+    let (title, tags) = yaml_to_meta(&yaml)?;
+    let _ = metach.send(Metadata::new(e.clone(), &title, &tags));
+    Ok(())
+}
+
+fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>), ioErr> {
+    let docs = match YamlLoader::load_from_str(s) {
+        Ok(docs) => docs,
+        Err(e) => return Err(ioErr::new(ErrorKind::NotFound, format!("{}", e))),
     };
 
-    let reader = BufReader::new(file);
-    let yaml = get_yaml_header(reader.lines());
-    let (title, tags) = yaml_to_meta(&yaml);
-
-    let _ = metach.send(Metadata::new(e.clone(), &title, &tags));
-}
-
-fn yaml_to_meta(s: &str) -> (String, Vec<String>) {
-    let docs = YamlLoader::load_from_str(s).unwrap();
+    if docs.len() == 0 {
+        return Err(ioErr::new(ErrorKind::NotFound, ""));
+    }
 
     let doc = &docs[0];
-    let title = doc["title"].as_str().unwrap();
+    let title = match doc["title"].as_str() {
+        Some(title) => title,
+        None => return Err(ioErr::new(ErrorKind::NotFound, "no title")),
+    };
+
     let mut tags = Vec::new();
-    for t in doc["tags"].as_vec().unwrap() {
-        tags.push(t.as_str().unwrap().into());
+    match doc["tags"].as_vec() {
+        Some(tt) => {
+            for t in tt {
+                match t.as_str() {
+                    Some(tag) => tags.push(tag.into()),
+                    None => continue,
+                }
+            }
+        }
+        None => {}
     }
-    (title.into(), tags)
+
+    Ok((title.into(), tags.into()))
 }
 
-fn get_yaml_header(lines: Lines<BufReader<File>>) -> String {
+fn get_yaml_header(lines: Lines<BufReader<File>>) -> Result<String, ioErr> {
     let mut header = Vec::new();
     let mut copy_yaml = false;
 
     for (i, line) in lines.enumerate() {
-        match line {
-            Ok(l) => {
-                if remove_whitespace(l.as_str()) == YAML_DELIM {
-                    if i == 0 {
-                        copy_yaml = true;
-                    } else {
-                        copy_yaml = false;
-                    }
-                } else {
-                    if copy_yaml {
-                        header.extend(l.as_bytes().to_vec());
-                    } else {
-                        break;
-                    }
-                }
+        let l = line?;
+        if remove_whitespace(l.as_str()) == YAML_DELIM {
+            if i == 0 {
+                copy_yaml = true;
+            } else {
+                copy_yaml = false;
             }
-            Err(e) => {
-                println!("{}", e);
+        } else {
+            if copy_yaml {
+                header.extend(format!("{}\n", l).as_bytes().to_vec());
+            } else {
                 break;
             }
         }
     }
 
     match str::from_utf8(&header[..]) {
-        Ok(str) => str.into(),
-        Err(_) => String::from(""),
+        Ok(str) => Ok(str.into()),
+        Err(_) => Err(ioErr::new(ErrorKind::NotFound, "no yaml header")),
     }
 }
 
@@ -105,7 +114,7 @@ tags:
 ";
 
         assert_eq!(
-            yaml_to_meta(&yaml),
+            yaml_to_meta(&yaml)?,
             (
                 String::from("my cool title"),
                 vec!["rust".into(), "programming languages".into()]
@@ -128,7 +137,7 @@ rest
         File::write_all(&mut f1, yaml.as_bytes())?;
         let file = File::open(path)?;
 
-        assert_eq!(get_yaml_header(BufReader::new(file).lines()), "salut");
+        assert_eq!(get_yaml_header(BufReader::new(file).lines())?, "salut\n");
         Ok(())
     }
 }

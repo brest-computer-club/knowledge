@@ -4,7 +4,7 @@ use std::path::PathBuf;
 pub struct Metadata {
     path: PathBuf,
     title: String,
-    tags: Vec<String>,
+    pub tags: Vec<String>,
 }
 
 impl Metadata {
