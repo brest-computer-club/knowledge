@@ -4,6 +4,7 @@ import Base64
 import Browser
 import Bytes.Encode
 import Html exposing (Html, button, div, h1, li, text, ul)
+import Html.Attributes exposing (class)
 import Html.Events as HE exposing (onClick)
 import Http exposing (expectJson, get)
 import Json.Decode exposing (Decoder, field, list, map2, string)
@@ -84,15 +85,33 @@ type Msg
 
 view : Model -> Html Msg
 view m =
-    div [] <|
-        [ h1 [] [ text "knowledge" ]
-        , div [] (List.map (\t -> button [ HE.onClick (GetArticlesByTag t) ] [ text t ]) m.tags)
+    div [ class "container" ] <|
+        [ h1 [] [ text "" ]
+        , div [] (List.map (\t -> button [ HE.onClick (GetArticlesByTag t), class "button", class "button-small" ] [ text t ]) m.tags)
         , div [] [ ul [] <| List.map (\t -> li [ HE.onClick (GetArticle t.path) ] [ text t.title ]) m.articles ]
-        , div [] [ renderMarkdown m.article ]
+        , div [] <| removeYamlHeader True <| renderMarkdown m.article
         ]
 
 
-renderMarkdown : String -> Html msg
+removeYamlHeader : Bool -> List (Html a) -> List (Html a)
+removeYamlHeader start src =
+    -- job: remove the yaml at the beginning of the file
+    case src of
+        [] ->
+            []
+
+        x :: xs ->
+            if start then
+                removeYamlHeader False xs
+
+            else if x == Html.hr [] [] then
+                xs
+
+            else
+                removeYamlHeader False xs
+
+
+renderMarkdown : String -> List (Html msg)
 renderMarkdown str =
     case
         str
@@ -105,10 +124,10 @@ renderMarkdown str =
             |> Result.andThen (\ast -> Markdown.Renderer.render Markdown.Renderer.defaultHtmlRenderer ast)
     of
         Ok rendered ->
-            div [] rendered
+            rendered
 
         Err errors ->
-            text errors
+            [ text errors ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

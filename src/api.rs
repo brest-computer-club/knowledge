@@ -6,12 +6,14 @@ use base64;
 use rust_embed::RustEmbed;
 
 pub fn server(address: &str, store: &'static storage::Store) -> Result<Server, std::io::Error> {
+    //let allowed = format!("http://{}", address);
     let server = HttpServer::new(move || {
         App::new()
             .wrap(
                 // NB : cors is needed only in dev env, find a way to build
                 Cors::default()
                     .allowed_origin("http://localhost:8000")
+                    .allowed_origin("http://localhost:8080")
                     .allowed_methods(vec!["GET"]),
             )
             .data(store.clone())

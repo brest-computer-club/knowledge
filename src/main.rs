@@ -3,6 +3,7 @@ extern crate lazy_static;
 
 use std::{env, thread};
 
+use webbrowser;
 mod api;
 mod domain;
 mod file_handler;
@@ -22,7 +23,10 @@ async fn main() -> std::io::Result<()> {
         thread::spawn(move || uc::build_graph(&p, &STORE));
     }
 
+    let bind_addr = format!("127.0.0.1:{}", 8080);
+    //let _ = webbrowser::open(&format!("http://{}", bind_addr))?;
+
     {
-        api::server(&format!("127.0.0.1:{}", 8080), &STORE)?.await
+        api::server(&bind_addr, &STORE)?.await
     }
 }

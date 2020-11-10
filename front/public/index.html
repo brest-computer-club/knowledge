@@ -7,28 +7,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="improve your touch typing speed">
 
-  <script src="assets/elm.js"></script>
+  <script src="/assets/elm.js"></script>
 
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css" integrity="sha512-oHDEc8Xed4hiW6CxD7qjbnI+B07vDdX7hEPTvn9pSZO1bcRqHp8mj9pyr+8RVC2GmtEfI2Bi9Ke9Ass0as+zpg==" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.min.css" integrity="sha512-xiunq9hpKsIcz42zt0o2vCo34xV0j6Ny8hgEylN3XBglZDtTZ2nwnqF/Z/TTCc18sGdvCjbFInNd++6q3J0N6g==" crossorigin="anonymous" />
 
   <style>
-.centerer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+.button-small {
+  font-size: .8rem;
+  height: 2.8rem;
+  line-height: 2.8rem;
+  padding: 0 1.5rem;
+  margin: 2px;
 }
 </style>
 
 </head>
 <body>
-  <div class="centerer">
-  <div style="width:100%">
-    <div id="app"></div>
-  </div>
-  </div>
+  <div id="app"></div>
   <script>
     Elm.Main.init({
       node: document.getElementById('app')
