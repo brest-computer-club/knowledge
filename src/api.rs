@@ -1,12 +1,19 @@
 use crate::storage;
 use crate::uc;
+use actix_cors::Cors;
 use actix_web::{dev::Server, web, App, HttpResponse, HttpServer, Responder};
+use base64;
 use rust_embed::RustEmbed;
-extern crate base64;
 
 pub fn server(address: &str, store: &'static storage::Store) -> Result<Server, std::io::Error> {
     let server = HttpServer::new(move || {
         App::new()
+            .wrap(
+                // NB : cors is needed only in dev env, find a way to build
+                Cors::default()
+                    .allowed_origin("http://localhost:8000")
+                    .allowed_methods(vec!["GET"]),
+            )
             .data(store.clone())
             .configure(back_routes)
             .configure(static_routes)
