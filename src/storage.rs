@@ -33,4 +33,12 @@ impl Store {
             None => None,
         }
     }
+
+    pub fn get_all_tags(&self) -> Vec<String> {
+        let mut res = Vec::new();
+        for k in self.meta_index.iter() {
+            res.push(k.key().clone())
+        }
+        res
+    }
 }
