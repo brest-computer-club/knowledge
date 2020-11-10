@@ -14,7 +14,7 @@ mod uc;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     lazy_static! {
-        pub static ref STORE: storage::Store = storage::Store::new();
+        static ref STORE: storage::Store = storage::Store::new();
     }
 
     {

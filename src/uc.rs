@@ -22,6 +22,7 @@ pub fn build_graph(p: &PathBuf, store: &'static storage::Store) {
     let _ = dir_send.send(p.clone());
 }
 
+// todo : path is not checked, do not expose this publicly
 pub fn get_article_content(p: &str) -> std::io::Result<String> {
     let content = fs::read_to_string(p)?;
     Ok(content)
