@@ -1,15 +1,16 @@
 use crate::domain::Metadata;
 use dashmap::DashMap;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct Store {
-    meta_index: DashMap<String, Vec<Metadata>>,
+    meta_index: Arc<DashMap<String, Vec<Metadata>>>,
 }
 
 impl Store {
     pub fn new() -> Store {
         Store {
-            meta_index: DashMap::new(),
+            meta_index: Arc::new(DashMap::new()),
         }
     }
 
