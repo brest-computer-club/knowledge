@@ -1,6 +1,7 @@
+use serde::Serialize;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Metadata {
     path: PathBuf,
     title: String,

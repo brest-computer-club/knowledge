@@ -1,3 +1,4 @@
+use crate::conf;
 use actix_web::{web, HttpResponse, Responder};
 use rust_embed::RustEmbed;
 
@@ -9,7 +10,7 @@ pub fn front_routes(cfg: &mut web::ServiceConfig) {
 }
 
 pub fn back_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(web::resource("/tag/{tag}").route(web::get().to(|| get_by_tag())));
+    cfg.service(web::resource("/tag/{tag}").route(web::get().to(get_by_tag)));
 }
 
 // frontend routes
@@ -33,6 +34,7 @@ async fn serve_static(f: StaticFile, _: ()) -> impl Responder {
 }
 
 // back routes
-async fn get_by_tag() -> impl Responder {
-    HttpResponse::Ok()
+
+async fn get_by_tag(tag: web::Path<String>) -> impl Responder {
+    HttpResponse::Ok().json(conf::STORE.get_by_tag(&tag.into_inner()))
 }

@@ -896,9 +896,11 @@ version = "0.1.0"
 dependencies = [
  "actix-web",
  "dashmap",
+ "lazy_static",
  "log",
  "partial_application",
  "rust-embed",
+ "serde",
  "tempfile",
  "webbrowser",
  "yaml-rust",
