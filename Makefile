@@ -6,7 +6,7 @@ front-build:
 	mv ./front/public/elm.min.js ./front/public/elm.js
 
 front-serve:
-	cd front && elm-live src/Main.elm --hot --dir=./public -- --output=public/elm.min.js
+	cd front && elm-live src/Main.elm --hot --dir=./public -- --output=public/elm.js
 
 back-build:
 	cargo build --release
