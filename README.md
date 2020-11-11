@@ -40,4 +40,13 @@ tags:
 - [ ] more complex tag combination search
 - [ ] use a random port to avoid conflicts 
 
+## Develop
+
+### front
+
+start the backend with the flag `-p 8080`
+
+```
+make front-serve
+```
 

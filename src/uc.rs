@@ -24,7 +24,6 @@ pub fn build_graph(p: &PathBuf, store: &'static storage::Store) {
 
 // todo : path is not checked, do not expose this publicly
 pub fn get_article_content(p: &str) -> std::io::Result<String> {
-    println!("get article -> {}", p);
     let content = fs::read_to_string(p)?;
     Ok(content)
 }

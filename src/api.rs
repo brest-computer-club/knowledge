@@ -13,7 +13,6 @@ pub fn server(address: &str, store: &'static storage::Store) -> Result<Server, s
                 // NB : cors is needed only in dev env, find a way to build
                 Cors::default()
                     .allowed_origin("http://localhost:8000")
-                    .allowed_origin("http://localhost:8080")
                     .allowed_methods(vec!["GET"]),
             )
             .data(store.clone())
@@ -38,7 +37,7 @@ fn back_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/tags").route(web::get().to(get_tags)));
     cfg.service(web::resource("/tag/{tag}").route(web::get().to(get_by_tag)));
     cfg.service(web::resource("/article/{path}").route(web::get().to(get_article_by_path)));
-    cfg.service(web::resource("/assets/{path}").route(web::get().to(get_asset_by_path)));
+    cfg.service(web::resource("/images/{path}").route(web::get().to(get_asset_by_path)));
 }
 
 // frontend routes

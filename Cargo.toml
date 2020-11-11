@@ -5,7 +5,9 @@ authors = ["Brest Computer Club <brest-computer-club@protonmail.com>"]
 edition = "2018"
 
 [dependencies]
+clap = "3.0.0-beta.2"
 actix-web = "3" # web framework
+
 # front
 rust-embed="3.0.0" # load front assets in binary
 webbrowser = "0.5.5" # open the default browser
@@ -17,6 +19,7 @@ lazy_static = "1.4.0" # storage ref
 serde = { version = "1.0", features = ["derive"] } # json response
 base64 = "0.13.0" # submitted article paths
 actix-cors = "0.5.1"
+rand = "0.7.3"
 
 [dev_dependencies]
 tempfile = "3" # to generate tests

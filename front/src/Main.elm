@@ -4,11 +4,10 @@ import Base64
 import Browser
 import Bytes.Encode
 import Html exposing (Html, button, div, h1, li, text, ul)
-import Html.Attributes exposing (class, href, title)
+import Html.Attributes exposing (class, href)
 import Html.Events as HE exposing (onClick)
 import Http exposing (expectJson, get)
 import Json.Decode exposing (Decoder, field, list, map2, string)
-import Markdown.Block as MDBlock
 import Markdown.Parser as MDParser
 import Markdown.Renderer as MDRenderer
 import Url
@@ -31,7 +30,7 @@ init : ( Model, Cmd Msg )
 init =
     ( { tags = [], articles = [], article = "" }
     , Http.get
-        { url = "http://127.0.0.1:8080/tags"
+        { url = "/tags"
         , expect = Http.expectJson GotTags tagDecoder
         }
     )
@@ -46,7 +45,7 @@ getArticle path =
     of
         Just artPath ->
             Http.get
-                { url = "http://127.0.0.1:8080/article/" ++ artPath
+                { url = "/article/" ++ artPath
                 , expect = Http.expectString GotArticle
                 }
 
@@ -57,7 +56,7 @@ getArticle path =
 getArticlesByTag : String -> Cmd Msg
 getArticlesByTag tag =
     Http.get
-        { url = "http://127.0.0.1:8080/tag/" ++ tag
+        { url = "/tag/" ++ tag
         , expect = Http.expectJson GotArticlesByTag articlesDecoder
         }
 
@@ -153,7 +152,7 @@ customRenderer =
                         Html.img [ Html.Attributes.src imageInfo.src ] []
 
                     Nothing ->
-                        Html.img [ Html.Attributes.src <| "http://127.0.0.1:8080/assets/" ++ toB64 imageInfo.src ] []
+                        Html.img [ Html.Attributes.src <| "/images/" ++ toB64 imageInfo.src ] []
     }
 
 
