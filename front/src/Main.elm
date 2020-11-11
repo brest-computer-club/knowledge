@@ -29,11 +29,16 @@ type alias Article =
 init : ( Model, Cmd Msg )
 init =
     ( { tags = [], articles = [], article = "" }
-    , Http.get
+    , getTags
+    )
+
+
+getTags : Cmd Msg
+getTags =
+    Http.get
         { url = "/tags"
         , expect = Http.expectJson GotTags tagDecoder
         }
-    )
 
 
 getArticle : String -> Cmd Msg
@@ -78,7 +83,7 @@ tagDecoder =
 type Msg
     = NoOp
     | GotTags (Result Http.Error (List String))
-    | GetArticlesByTag String
+    | TagClicked String
     | GotArticlesByTag (Result Http.Error (List Article))
     | GetArticle String
     | GotArticle (Result Http.Error String)
@@ -88,7 +93,7 @@ view : Model -> Html Msg
 view m =
     div [ class "container" ] <|
         [ h1 [] [ text "" ]
-        , div [] (List.map (\t -> button [ HE.onClick (GetArticlesByTag t), class "button", class "button-small" ] [ text t ]) m.tags)
+        , div [] (List.map (\t -> button [ HE.onClick (TagClicked t), class "button", class "button-small" ] [ text t ]) m.tags)
         , div [] [ ul [] <| List.map (\t -> li [ HE.onClick (GetArticle t.path) ] [ text t.title ]) m.articles ]
         , div [] <| removeYamlHeader True <| renderMarkdown m.article
         ]
@@ -184,8 +189,8 @@ update msg m =
                 Err _ ->
                     ( m, Cmd.none )
 
-        GetArticlesByTag tag ->
-            ( m, getArticlesByTag tag )
+        TagClicked tag ->
+            ( m, Cmd.batch [ getTags, getArticlesByTag tag ] )
 
         GotArticlesByTag res ->
             case res of
