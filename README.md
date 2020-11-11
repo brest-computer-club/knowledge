@@ -33,12 +33,13 @@ tags:
 - [x] walk all sub-directories and discover all well-formatted files
 - [x] handle relative links between "articles"
 - [x] handle local and distant images 
+- [x] use a random port to avoid conflicts 
 
 ## TODO
-- [ ] refactor both front & back ( current code quality : hackathon )
+- [ ] cleanup front 
+- [ ] cleanup back
 - [ ] add circle-ci
 - [ ] more complex tag combination search
-- [ ] use a random port to avoid conflicts 
 
 ## Develop
 
