@@ -143,7 +143,7 @@ customRenderer path =
             MDRenderer.defaultHtmlRenderer
 
         normalizeLink link =
-            stringNormalize <| getFolder path ++ link
+            normalizePath <| getFolder path ++ link
     in
     { orig
         | link =
@@ -160,11 +160,11 @@ customRenderer path =
                         Html.img [ Html.Attributes.src imageInfo.src ] []
 
                     Nothing ->
-                        Html.img [ Html.Attributes.src <| "/api/images/" ++ (toB64 <| normalizeLink imageInfo.src) ] []
+                        Html.img [ Html.Attributes.src <| "/api/images/" ++ toB64 (normalizeLink imageInfo.src) ] []
     }
 
 
-getFolder : String -> String
+getFolder : Path -> String
 getFolder str =
     str
         |> String.split "/"
@@ -172,8 +172,8 @@ getFolder str =
         |> String.join "/"
 
 
-stringNormalize : String -> String
-stringNormalize str =
+normalizePath : Path -> String
+normalizePath str =
     str
         |> String.split "/"
         |> List.foldl

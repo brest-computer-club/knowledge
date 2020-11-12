@@ -34,9 +34,9 @@ tags:
 - [x] handle relative links between "articles"
 - [x] handle local and distant images 
 - [x] use a random port to avoid conflicts 
+- [x] use async instead of spawning threads on iterations
 
 ## TODO
-- [ ] cleanup front 
 - [ ] cleanup back
 - [ ] add circle-ci
 - [ ] more complex tag combination search
