@@ -16,19 +16,23 @@ import Url
 type alias Model =
     { tags : List String
     , articles : List Article
-    , article : String
+    , articleContent : ( Path, String )
     }
 
 
 type alias Article =
     { title : String
-    , path : String
+    , path : Path
     }
+
+
+type alias Path =
+    String
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { tags = [], articles = [], article = "" }
+    ( { tags = [], articles = [], articleContent = ( "", "" ) }
     , getTags
     )
 
@@ -37,7 +41,7 @@ getTags : Cmd Msg
 getTags =
     Http.get
         { url = "/api/tags"
-        , expect = Http.expectJson GotTags tagDecoder
+        , expect = Http.expectJson GotTags (list string)
         }
 
 
@@ -51,7 +55,9 @@ getArticle path =
         Just artPath ->
             Http.get
                 { url = "/api/article/" ++ artPath
-                , expect = Http.expectString GotArticle
+                , expect =
+                    Http.expectString
+                        (GotArticle path)
                 }
 
         Nothing ->
@@ -75,18 +81,13 @@ articlesDecoder =
         )
 
 
-tagDecoder : Decoder (List String)
-tagDecoder =
-    list string
-
-
 type Msg
     = NoOp
     | GotTags (Result Http.Error (List String))
     | TagClicked String
     | GotArticlesByTag (Result Http.Error (List Article))
     | GetArticle String
-    | GotArticle (Result Http.Error String)
+    | GotArticle String (Result Http.Error String)
 
 
 view : Model -> Html Msg
@@ -95,13 +96,12 @@ view m =
         [ h1 [] [ text "" ]
         , div [] (List.map (\t -> button [ HE.onClick (TagClicked t), class "button", class "button-small" ] [ text t ]) m.tags)
         , div [] [ ul [] <| List.map (\t -> li [ HE.onClick (GetArticle t.path) ] [ text t.title ]) m.articles ]
-        , div [] <| removeYamlHeader True <| renderMarkdown m.article
+        , div [] <| removeYamlHeader True <| renderMarkdown m.articleContent
         ]
 
 
 removeYamlHeader : Bool -> List (Html a) -> List (Html a)
 removeYamlHeader start src =
-    -- job: remove the yaml at the beginning of the file
     case src of
         [] ->
             []
@@ -117,8 +117,8 @@ removeYamlHeader start src =
                 removeYamlHeader False xs
 
 
-renderMarkdown : String -> List (Html Msg)
-renderMarkdown str =
+renderMarkdown : ( Path, String ) -> List (Html Msg)
+renderMarkdown ( path, str ) =
     case
         str
             |> MDParser.parse
@@ -127,7 +127,7 @@ renderMarkdown str =
                     String.join "\n" <|
                         List.map MDParser.deadEndToString ee
                 )
-            |> Result.andThen (\ast -> MDRenderer.render customRenderer ast)
+            |> Result.andThen (\ast -> MDRenderer.render (customRenderer path) ast)
     of
         Ok rendered ->
             rendered
@@ -136,18 +136,21 @@ renderMarkdown str =
             [ text errors ]
 
 
-customRenderer : MDRenderer.Renderer (Html Msg)
-customRenderer =
+customRenderer : String -> MDRenderer.Renderer (Html Msg)
+customRenderer path =
     let
         orig =
             MDRenderer.defaultHtmlRenderer
+
+        normalizeLink link =
+            stringNormalize <| getFolder path ++ link
     in
     { orig
         | link =
             \link content ->
                 Html.a
                     [ href "#"
-                    , HE.onClick (GetArticle link.destination)
+                    , HE.onClick (GetArticle <| normalizeLink link.destination)
                     ]
                     content
         , image =
@@ -157,9 +160,37 @@ customRenderer =
                         Html.img [ Html.Attributes.src imageInfo.src ] []
 
                     Nothing ->
-                        -- todo calculate image path according to rendered article path
-                        Html.img [ Html.Attributes.src <| "/api/images/" ++ toB64 imageInfo.src ] []
+                        Html.img [ Html.Attributes.src <| "/api/images/" ++ (toB64 <| normalizeLink imageInfo.src) ] []
     }
+
+
+getFolder : String -> String
+getFolder str =
+    str
+        |> String.split "/"
+        |> List.take -1
+        |> String.join "/"
+
+
+stringNormalize : String -> String
+stringNormalize str =
+    str
+        |> String.split "/"
+        |> List.foldl
+            (\segment acc ->
+                case segment of
+                    ".." ->
+                        List.drop 1 acc
+
+                    "." ->
+                        acc
+
+                    _ ->
+                        segment :: acc
+            )
+            []
+        |> List.reverse
+        |> String.join "/"
 
 
 toB64 : String -> String
@@ -204,10 +235,10 @@ update msg m =
         GetArticle path ->
             ( m, getArticle path )
 
-        GotArticle res ->
+        GotArticle path res ->
             case res of
                 Ok content ->
-                    ( { m | article = content }, Cmd.none )
+                    ( { m | articleContent = ( path, content ) }, Cmd.none )
 
                 Err _ ->
                     ( m, Cmd.none )
