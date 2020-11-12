@@ -1,38 +1,38 @@
-extern crate yaml_rust;
-use yaml_rust::YamlLoader;
-
+use async_std::sync::{Receiver, Sender};
+use async_std::task;
 use std::fs::File;
 use std::io::{prelude::*, BufReader, Error as ioErr, ErrorKind, Lines};
 use std::path::PathBuf;
 use std::str;
-use std::sync::mpsc::{Receiver, Sender};
-use std::thread;
+use yaml_rust::YamlLoader;
 
 use crate::domain::Metadata;
 
 static YAML_DELIM: &'static str = "---";
 
 pub fn watch(rch: &Receiver<PathBuf>, metach: &Sender<Metadata>) {
-    loop {
-        match rch.recv() {
-            Ok(p) => {
-                let mc = Sender::clone(metach);
-                thread::spawn(move || get_metadata(&p.clone(), &mc));
-            }
-            Err(e) => {
-                println!("file handler watch err: {}", e);
-                continue;
-            }
-        };
-    }
+    task::block_on(async {
+        loop {
+            match rch.recv().await {
+                Ok(p) => {
+                    let mc = Sender::clone(metach);
+                    task::spawn(async move { get_metadata(&p.clone(), &mc).await });
+                }
+                Err(e) => {
+                    println!("file handler watch err: {}", e);
+                    continue;
+                }
+            };
+        }
+    });
 }
 
-fn get_metadata(e: &PathBuf, metach: &Sender<Metadata>) -> Result<(), ioErr> {
+async fn get_metadata(e: &PathBuf, metach: &Sender<Metadata>) -> Result<(), ioErr> {
     let file = File::open(e)?;
     let reader = BufReader::new(file);
     let yaml = get_yaml_header(reader.lines())?;
     let (title, tags) = yaml_to_meta(&yaml)?;
-    let _ = metach.send(Metadata::new(e.clone(), &title, &tags));
+    let _ = metach.send(Metadata::new(e.clone(), &title, &tags)).await;
     Ok(())
 }
 
