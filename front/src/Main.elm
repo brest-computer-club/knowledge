@@ -36,7 +36,7 @@ init =
 getTags : Cmd Msg
 getTags =
     Http.get
-        { url = "/tags"
+        { url = "/api/tags"
         , expect = Http.expectJson GotTags tagDecoder
         }
 
@@ -50,7 +50,7 @@ getArticle path =
     of
         Just artPath ->
             Http.get
-                { url = "/article/" ++ artPath
+                { url = "/api/article/" ++ artPath
                 , expect = Http.expectString GotArticle
                 }
 
@@ -61,7 +61,7 @@ getArticle path =
 getArticlesByTag : String -> Cmd Msg
 getArticlesByTag tag =
     Http.get
-        { url = "/tag/" ++ tag
+        { url = "/api/tag/" ++ tag
         , expect = Http.expectJson GotArticlesByTag articlesDecoder
         }
 
@@ -157,7 +157,8 @@ customRenderer =
                         Html.img [ Html.Attributes.src imageInfo.src ] []
 
                     Nothing ->
-                        Html.img [ Html.Attributes.src <| "/images/" ++ toB64 imageInfo.src ] []
+                        -- todo calculate image path according to rendered article path
+                        Html.img [ Html.Attributes.src <| "/api/images/" ++ toB64 imageInfo.src ] []
     }
 
 

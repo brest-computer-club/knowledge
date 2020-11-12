@@ -16,8 +16,8 @@ pub fn server(address: &str, store: &'static storage::Store) -> Result<Server, s
                     .allowed_methods(vec!["GET"]),
             )
             .data(store.clone())
-            .configure(back_routes)
             .configure(static_routes)
+            .configure(back_routes)
     })
     .bind(address)?
     .run();
@@ -29,15 +29,18 @@ pub fn server(address: &str, store: &'static storage::Store) -> Result<Server, s
 fn static_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(web::resource("/").route(web::get().to(|| serve_static(StaticFile::Index, ()))));
     cfg.service(
-        web::resource("/assets/elm.js").route(web::get().to(|| serve_static(StaticFile::Elm, ()))),
+        web::resource("/elm.js").route(web::get().to(|| serve_static(StaticFile::Elm, ()))),
     );
 }
 
 fn back_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(web::resource("/tags").route(web::get().to(get_tags)));
-    cfg.service(web::resource("/tag/{tag}").route(web::get().to(get_by_tag)));
-    cfg.service(web::resource("/article/{path}").route(web::get().to(get_article_by_path)));
-    cfg.service(web::resource("/images/{path}").route(web::get().to(get_asset_by_path)));
+    cfg.service(
+        web::scope("/api")
+            .route("/tags", web::get().to(get_tags))
+            .service(web::resource("/tag/{tag}").route(web::get().to(get_by_tag)))
+            .service(web::resource("/article/{path}").route(web::get().to(get_article_by_path)))
+            .service(web::resource("/images/{path}").route(web::get().to(get_asset_by_path))),
+    );
 }
 
 // frontend routes

@@ -6,7 +6,7 @@ front-build:
 	mv ./front/public/elm.min.js ./front/public/elm.js
 
 front-serve:
-	cd front && elm-live src/Main.elm --hot --proxy-prefix=/ --proxy-host=http://localhost:8080 --dir=./public -- --output=public/elm.js 
+	cd front && elm-live src/Main.elm --hot -v --proxy-prefix=/api --proxy-host=http://localhost:8080/api --dir=./public -- --output=public/elm.js 
 
 back-build:
 	cargo build --release --locked
