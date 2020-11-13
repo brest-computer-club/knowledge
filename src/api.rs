@@ -26,7 +26,6 @@ pub fn server(
 }
 
 fn get_cors(dev_mode: &bool) -> Cors {
-    // NB : cors is needed only in dev env, find a way to build
     if *dev_mode {
         return Cors::default()
             .allowed_origin("http://localhost:8000")

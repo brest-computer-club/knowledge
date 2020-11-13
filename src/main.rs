@@ -23,8 +23,6 @@ async fn main() -> io::Result<()> {
     }
 
     {
-        // walk the current folder and build the store
-        //let p = env::current_dir()?;
         let f = get_folder(&mm)?;
         thread::spawn(move || uc::build_graph(&f, &STORE));
     }
@@ -32,12 +30,10 @@ async fn main() -> io::Result<()> {
     {
         let bind_addr = format!("127.0.0.1:{}", get_listen_port(&mm));
         if !in_dev_mode(&mm) {
-            // launch the webbrowser
             let url = format!("http://{}", bind_addr.clone());
             thread::spawn(move || webbrowser::open(&url));
         }
 
-        // start the API
         api::server(&bind_addr, &STORE, &false)?.await
     }
 }

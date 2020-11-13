@@ -10,6 +10,7 @@ import Http exposing (expectJson, get)
 import Json.Decode exposing (Decoder, field, list, map2, string)
 import Markdown.Parser as MDParser
 import Markdown.Renderer as MDRenderer
+import Regex
 import Url
 
 
@@ -177,14 +178,31 @@ customRenderer path =
 
 getFolder : Path -> String
 getFolder str =
+    let
+        reg =
+            Maybe.withDefault Regex.never <|
+                Regex.fromString ".*/"
+    in
     str
-        |> String.split "/"
-        |> List.take -1
-        |> String.join "/"
+        |> Regex.find reg
+        |> List.map .match
+        |> List.head
+        |> Maybe.withDefault ""
 
 
 normalizePath : Path -> String
 normalizePath str =
+    let
+        reg =
+            Maybe.withDefault Regex.never <|
+                Regex.fromString "^(\\.\\.?/)*"
+
+        prefix =
+            str
+                |> Regex.find reg
+                |> List.map .match
+                |> String.join ""
+    in
     str
         |> String.split "/"
         |> List.foldl
@@ -201,7 +219,10 @@ normalizePath str =
             )
             []
         |> List.reverse
-        |> String.join "/"
+        |> (\l ->
+                prefix
+                    ++ String.join "/" l
+           )
 
 
 toB64 : String -> String
