@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Metadata {
-    path: PathBuf,
+    pub path: PathBuf,
     title: String,
     pub tags: Vec<String>,
 }

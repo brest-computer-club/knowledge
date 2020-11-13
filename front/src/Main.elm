@@ -32,8 +32,11 @@ type alias Path =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { tags = [], articles = [], articleContent = ( "", "" ) }
-    , getTags
+    ( { tags = []
+      , articles = []
+      , articleContent = ( "", "" )
+      }
+    , Cmd.batch [ getTags, getArticles ]
     )
 
 
@@ -54,7 +57,7 @@ getArticle path =
     of
         Just artPath ->
             Http.get
-                { url = "/api/article/" ++ artPath
+                { url = "/api/articles/" ++ artPath
                 , expect =
                     Http.expectString
                         (GotArticle path)
@@ -64,10 +67,18 @@ getArticle path =
             Cmd.none
 
 
+getArticles : Cmd Msg
+getArticles =
+    Http.get
+        { url = "/api/articles"
+        , expect = Http.expectJson GotArticlesByTag articlesDecoder
+        }
+
+
 getArticlesByTag : String -> Cmd Msg
 getArticlesByTag tag =
     Http.get
-        { url = "/api/tag/" ++ tag
+        { url = "/api/tags/" ++ tag
         , expect = Http.expectJson GotArticlesByTag articlesDecoder
         }
 
