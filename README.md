@@ -34,18 +34,20 @@ tags:
 - [x] handle relative links between "articles"
 - [x] handle local and distant images 
 - [x] use a random port to avoid conflicts 
-- [x] use async instead of spawning threads on iterations
 
 ## TODO
-- [ ] cleanup back
+- [ ] update on file change
 - [ ] add circle-ci
 - [ ] more complex tag combination search
+- [ ] handle local svg
 
 ## Develop
 
+a nix-shell is available at the root of this folder
+
 ### front
 
-start the backend with the flag `-p 8080`
+start the backend with the flag `-d`, then
 
 ```
 make front-serve

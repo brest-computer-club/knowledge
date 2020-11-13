@@ -5,16 +5,15 @@ use actix_web::{dev::Server, web, App, HttpResponse, HttpServer, Responder};
 use base64;
 use rust_embed::RustEmbed;
 
-pub fn server(address: &str, store: &'static storage::Store) -> Result<Server, std::io::Error> {
-    //let allowed = format!("http://{}", address);
+pub fn server(
+    address: &str,
+    store: &'static storage::Store,
+    dev_mode: &bool,
+) -> Result<Server, std::io::Error> {
+    let dev_mode = dev_mode.clone();
     let server = HttpServer::new(move || {
         App::new()
-            .wrap(
-                // NB : cors is needed only in dev env, find a way to build
-                Cors::default()
-                    .allowed_origin("http://localhost:8000")
-                    .allowed_methods(vec!["GET"]),
-            )
+            .wrap(get_cors(&dev_mode))
             .data(store.clone())
             .configure(static_routes)
             .configure(back_routes)
@@ -24,6 +23,16 @@ pub fn server(address: &str, store: &'static storage::Store) -> Result<Server, s
 
     println!("listening on : {}", address);
     Ok(server)
+}
+
+fn get_cors(dev_mode: &bool) -> Cors {
+    // NB : cors is needed only in dev env, find a way to build
+    if *dev_mode {
+        return Cors::default()
+            .allowed_origin("http://localhost:8000")
+            .allowed_methods(vec!["GET"]);
+    }
+    Cors::default()
 }
 
 fn static_routes(cfg: &mut web::ServiceConfig) {

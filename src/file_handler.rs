@@ -1,7 +1,7 @@
 use async_std::sync::{Receiver, Sender};
 use async_std::task;
 use std::fs::File;
-use std::io::{prelude::*, BufReader, Error as ioErr, ErrorKind, Lines};
+use std::io::{prelude::*, BufReader, Error as ioErr, ErrorKind, Lines, Result};
 use std::path::PathBuf;
 use std::str;
 use yaml_rust::YamlLoader;
@@ -27,7 +27,7 @@ pub fn watch(rch: &Receiver<PathBuf>, metach: &Sender<Metadata>) {
     });
 }
 
-async fn get_metadata(e: &PathBuf, metach: &Sender<Metadata>) -> Result<(), ioErr> {
+async fn get_metadata(e: &PathBuf, metach: &Sender<Metadata>) -> Result<()> {
     let file = File::open(e)?;
     let reader = BufReader::new(file);
     let yaml = get_yaml_header(reader.lines())?;
@@ -36,7 +36,7 @@ async fn get_metadata(e: &PathBuf, metach: &Sender<Metadata>) -> Result<(), ioEr
     Ok(())
 }
 
-fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>), ioErr> {
+fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>)> {
     let docs = match YamlLoader::load_from_str(s) {
         Ok(docs) => docs,
         Err(e) => return Err(ioErr::new(ErrorKind::NotFound, format!("{}", e))),
@@ -68,7 +68,7 @@ fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>), ioErr> {
     Ok((title.into(), tags.into()))
 }
 
-fn get_yaml_header(lines: Lines<BufReader<File>>) -> Result<String, ioErr> {
+fn get_yaml_header(lines: Lines<BufReader<File>>) -> Result<String> {
     let mut header = Vec::new();
     let mut copy_yaml = false;
 
