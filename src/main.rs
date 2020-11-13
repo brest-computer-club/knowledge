@@ -43,6 +43,7 @@ async fn main() -> io::Result<()> {
 
 fn cli_setup() -> ArgMatches {
     App::new("Knowledge")
+        .version("0.0.2")
         .author("Brest Computer Club <brest-computer-club@protonmail.com>")
         .about("transform your markdown file into a knowledge base")
         .arg(

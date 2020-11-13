@@ -1,6 +1,6 @@
 [package]
 name = "knowledge"
-version = "0.1.0"
+version = "0.0.2"
 authors = ["Brest Computer Club <brest-computer-club@protonmail.com>"]
 edition = "2018"
 
