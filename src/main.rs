@@ -1,6 +1,6 @@
 use clap::{App, Arg, ArgMatches};
 use lazy_static::lazy_static;
-use std::io;
+use std::{io, path::PathBuf};
 
 use rand::Rng;
 use std::{env, thread};
@@ -16,7 +16,7 @@ mod uc;
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
-    let matches = cli_setup();
+    let mm = cli_setup();
 
     lazy_static! {
         static ref STORE: storage::Store = storage::Store::new();
@@ -24,13 +24,14 @@ async fn main() -> io::Result<()> {
 
     {
         // walk the current folder and build the store
-        let p = env::current_dir()?;
-        thread::spawn(move || uc::build_graph(&p, &STORE));
+        //let p = env::current_dir()?;
+        let f = get_folder(&mm)?;
+        thread::spawn(move || uc::build_graph(&f, &STORE));
     }
 
     {
-        let bind_addr = format!("127.0.0.1:{}", get_listen_port(&matches));
-        if !in_dev_mode(&matches) {
+        let bind_addr = format!("127.0.0.1:{}", get_listen_port(&mm));
+        if !in_dev_mode(&mm) {
             // launch the webbrowser
             let url = format!("http://{}", bind_addr.clone());
             thread::spawn(move || webbrowser::open(&url));
@@ -54,6 +55,13 @@ fn cli_setup() -> ArgMatches {
                 .takes_value(true),
         )
         .arg(
+            Arg::new("folder")
+                .short('f')
+                .long("folder")
+                .about("the root folder")
+                .takes_value(true),
+        )
+        .arg(
             Arg::new("dev_mode")
                 .short('d')
                 .long("dev")
@@ -61,6 +69,15 @@ fn cli_setup() -> ArgMatches {
                 .takes_value(false),
         )
         .get_matches()
+}
+
+fn get_folder(mm: &ArgMatches) -> io::Result<PathBuf> {
+    let f: String = mm.value_of_t("folder").unwrap_or("".to_string());
+    if f == "" {
+        return env::current_dir();
+    }
+
+    Ok(PathBuf::from(f))
 }
 
 fn get_listen_port(mm: &ArgMatches) -> u16 {

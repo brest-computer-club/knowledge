@@ -45,9 +45,10 @@ fn static_routes(cfg: &mut web::ServiceConfig) {
 fn back_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
-            .route("/tags", web::get().to(get_tags))
-            .service(web::resource("/tag/{tag}").route(web::get().to(get_by_tag)))
-            .service(web::resource("/article/{path}").route(web::get().to(get_article_by_path)))
+            .route("/tags", web::get().to(get_all_tags))
+            .service(web::resource("/tags/{tag}").route(web::get().to(get_by_tag)))
+            .service(web::resource("/articles").route(web::get().to(get_all_articles)))
+            .service(web::resource("/articles/{path}").route(web::get().to(get_article_by_path)))
             .service(web::resource("/images/{path}").route(web::get().to(get_asset_by_path))),
     );
 }
@@ -78,9 +79,12 @@ async fn get_by_tag(store: web::Data<storage::Store>, tag: web::Path<String>) ->
     HttpResponse::Ok().json(store.get_by_tag(&tag.into_inner()))
 }
 
-async fn get_tags(store: web::Data<storage::Store>) -> impl Responder {
-    let resp = uc::get_all_tags(&store).unwrap();
-    HttpResponse::Ok().json(resp)
+async fn get_all_articles(store: web::Data<storage::Store>) -> impl Responder {
+    HttpResponse::Ok().json(store.get_all_articles())
+}
+
+async fn get_all_tags(store: web::Data<storage::Store>) -> impl Responder {
+    HttpResponse::Ok().json(store.get_all_tags())
 }
 
 async fn get_article_by_path(path: web::Path<String>) -> impl Responder {

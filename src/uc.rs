@@ -28,7 +28,3 @@ pub fn get_article_content(p: &str) -> std::io::Result<String> {
     let content = fs::read_to_string(p)?;
     Ok(content)
 }
-
-pub fn get_all_tags(store: &storage::Store) -> std::io::Result<Vec<String>> {
-    Ok(store.get_all_tags())
-}
