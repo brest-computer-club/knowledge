@@ -28,13 +28,14 @@ async fn main() -> io::Result<()> {
     }
 
     {
-        let bind_addr = format!("127.0.0.1:{}", get_listen_port(&mm));
-        if !in_dev_mode(&mm) {
+        let bind_addr = format!("localhost:{}", get_listen_port(&mm));
+        let dev_mode = in_dev_mode(&mm);
+        if !dev_mode {
             let url = format!("http://{}", bind_addr.clone());
             thread::spawn(move || webbrowser::open(&url));
         }
 
-        api::server(&bind_addr, &STORE, &false)?.await
+        api::server(&bind_addr, &STORE, &dev_mode)?.await
     }
 }
 

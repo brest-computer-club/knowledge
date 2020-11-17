@@ -7,8 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="turn your markdown file into a knowledge base">
 
+
   <script src="elm.js"></script>
 
+  <!-- tagify -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tagify/3.21.4/tagify.min.js" integrity="sha512-T7GN6cYRMsEMSAqTGGfabv/nPWciRoQLGKnt3LdVacb6qI48za8Rn2NvnrpFKYcwGN2MvZOnvgyWTDbJ/NqcQg==" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tagify/3.21.4/tagify.min.css" integrity="sha512-91wa7heHLbuVdMrSXbWceVZva6iWDFlkFHnM+9Sc+oXFpTgw1FCqdnuaGBJfDVuNSNl0DwDmeGeJSORB0HyLZQ==" crossorigin="anonymous" />
+
+
+  <!-- fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css" integrity="sha512-oHDEc8Xed4hiW6CxD7qjbnI+B07vDdX7hEPTvn9pSZO1bcRqHp8mj9pyr+8RVC2GmtEfI2Bi9Ke9Ass0as+zpg==" crossorigin="anonymous" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.min.css" integrity="sha512-xiunq9hpKsIcz42zt0o2vCo34xV0j6Ny8hgEylN3XBglZDtTZ2nwnqF/Z/TTCc18sGdvCjbFInNd++6q3J0N6g==" crossorigin="anonymous" />
@@ -21,6 +28,9 @@
   padding: 0 1.5rem;
   margin: 2px;
 }
+.article h1 {
+  text-align: center;
+}
 </style>
 
 </head>
@@ -28,9 +38,37 @@
   <div id="app"></div>
 
   <script>
-    Elm.Main.init({
+  var app =  Elm.Main.init({
       node: document.getElementById('app')
-    });
+  });
+
+  var inputs = [];
+
+  app.ports.notifyNewInput.subscribe(function(msg) {
+    // todo : fix this ugly hack (welcome to js) !
+    // we wait an arbitrary 50ms in order to wait for the element to be added to the DOM.
+    // use the MutationObserver API ?
+    setTimeout(function(){ 
+        const name = msg[0];
+        const tags = msg[1];
+        var el = document.querySelector(`input[name=${name}]`);
+        var tag = new Tagify(el, { enforceWhitelist: true, whitelist: tags });
+
+        inputs.push(tag);
+    }, 50);
+  });
+
+  app.ports.notifyNewTags.subscribe(function(msg) {
+    setTimeout(function(){ 
+      for (const e of inputs) {
+        e.settings.whitelist.length = 0;
+        e.settings.whitelist.splice(0, msg.length, ...msg)
+      }
+    }, 50);
+  });
+
+
   </script>
+
 </body>
 </html>

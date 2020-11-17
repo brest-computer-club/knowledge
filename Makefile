@@ -8,6 +8,9 @@ front-build:
 front-serve:
 	cd front && elm-live src/Main.elm --hot -v --proxy-prefix=/api --proxy-host=http://localhost:8080/api --dir=./public -- --output=public/elm.js 
 
+front-test:
+	cd front && elm-test 
+
 back-build:
 	cargo build --release --locked
 

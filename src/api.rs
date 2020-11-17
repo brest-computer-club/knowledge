@@ -1,9 +1,11 @@
 use crate::storage;
 use crate::uc;
+use crate::uc::Query;
 use actix_cors::Cors;
 use actix_web::{dev::Server, web, App, HttpResponse, HttpServer, Responder};
 use base64;
 use rust_embed::RustEmbed;
+use serde::{Deserialize, Serialize};
 
 pub fn server(
     address: &str,
@@ -11,9 +13,11 @@ pub fn server(
     dev_mode: &bool,
 ) -> Result<Server, std::io::Error> {
     let dev_mode = dev_mode.clone();
+    let addr = address.to_string();
+
     let server = HttpServer::new(move || {
         App::new()
-            .wrap(get_cors(&dev_mode))
+            .wrap(get_cors(&addr.clone(), &dev_mode))
             .data(store.clone())
             .configure(static_routes)
             .configure(back_routes)
@@ -25,13 +29,17 @@ pub fn server(
     Ok(server)
 }
 
-fn get_cors(dev_mode: &bool) -> Cors {
+fn get_cors(address: &String, dev_mode: &bool) -> Cors {
+    let bind_addr = &format!("http://{}", address)[..];
     if *dev_mode {
         return Cors::default()
             .allowed_origin("http://localhost:8000")
-            .allowed_methods(vec!["GET"]);
+            .allowed_origin(bind_addr.clone())
+            .allowed_methods(vec!["GET", "POST"]);
     }
     Cors::default()
+        .allowed_methods(vec!["GET", "POST"])
+        .allowed_origin(bind_addr.clone())
 }
 
 fn static_routes(cfg: &mut web::ServiceConfig) {
@@ -45,13 +53,28 @@ fn back_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api")
             .route("/tags", web::get().to(get_all_tags))
-            .service(web::resource("/tags/{tag}").route(web::get().to(get_by_tag)))
-            .service(web::resource("/articles").route(web::get().to(get_all_articles)))
-            .service(web::resource("/articles/{path}").route(web::get().to(get_article_by_path)))
-            .service(web::resource("/images/{path}").route(web::get().to(get_asset_by_path))),
+            .route("/tags/{tag}", web::get().to(get_by_tag))
+            .route("/search-by-tags", web::post().to(search_by_tag))
+            .route("/articles", web::get().to(get_all_articles))
+            .route("/articles/{path}", web::get().to(get_article_by_path))
+            .route("/images/{path}", web::get().to(get_asset_by_path))
+            .route("/test", web::get().to(test_ser)),
     );
 }
+use crate::domain;
+async fn test_ser() -> impl Responder {
+    let bla = uc::Query::Comb(
+        domain::Op::Or,
+        Box::new(uc::Query::Comb(
+            domain::Op::And,
+            Box::new(uc::Query::Sing("first".to_string())),
+            Box::new(uc::Query::Sing("first".to_string())),
+        )),
+        Box::new(uc::Query::Sing("second".to_string())),
+    );
 
+    HttpResponse::Ok().json(JsonQuery::from_uc(&bla))
+}
 // frontend routes
 #[derive(RustEmbed)]
 #[folder = "./front/public"]
@@ -98,7 +121,51 @@ async fn get_asset_by_path(path: web::Path<String>) -> impl Responder {
     HttpResponse::Ok().body(bin)
 }
 
+async fn search_by_tag(
+    store: web::Data<storage::Store>,
+    json_query: web::Json<JsonQuery>,
+) -> impl Responder {
+    HttpResponse::Ok().json(uc::search_by_tag(&JsonQuery::to_uc(&json_query), &store))
+}
+
 fn decode_path(path: web::Path<String>) -> String {
     let dec = base64::decode(&path.into_inner()).unwrap();
     String::from_utf8(dec).unwrap()
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
+enum JsonQuery {
+    Sing {
+        val: String,
+    },
+    Comb {
+        op: domain::Op,
+        qa: Box<JsonQuery>,
+        qb: Box<JsonQuery>,
+    },
+}
+
+impl JsonQuery {
+    fn from_uc(q: &Query) -> JsonQuery {
+        match &q {
+            Query::Sing(tag) => JsonQuery::Sing { val: tag.clone() },
+            Query::Comb(op, qa, qb) => JsonQuery::Comb {
+                op: op.clone(),
+                qa: Box::new(JsonQuery::from_uc(qa)),
+                qb: Box::new(JsonQuery::from_uc(qb)),
+            },
+        }
+    }
+
+    fn to_uc(jq: &JsonQuery) -> Query {
+        match &jq {
+            JsonQuery::Sing { val } => Query::Sing(val.clone()),
+            JsonQuery::Comb { op, qa, qb } => Query::Comb(
+                op.clone(),
+                Box::new(JsonQuery::to_uc(qa)),
+                Box::new(JsonQuery::to_uc(qb)),
+            ),
+        }
+    }
 }

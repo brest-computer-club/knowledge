@@ -14,6 +14,7 @@ let
     buildInputs = with pkgs;                                
        altPkgs.bundles.elm pkgs ++                                
        [ 
+         pkgs.elmPackages.elm-test
          pkgs.nodePackages.uglify-js
          pkgs.rustup
      ];                                

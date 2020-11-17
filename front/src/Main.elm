@@ -1,279 +1,78 @@
 module Main exposing (main)
 
-import Base64
+import Article
 import Browser
-import Bytes.Encode
-import Html exposing (Html, button, div, h1, li, text, ul)
-import Html.Attributes exposing (class, href)
-import Html.Events as HE exposing (onClick)
-import Http exposing (expectJson, get)
-import Json.Decode exposing (Decoder, field, list, map2, string)
-import Markdown.Parser as MDParser
-import Markdown.Renderer as MDRenderer
-import Regex
-import Url
+import Html exposing (Html, div)
+import Html.Attributes as HA
+import Search
 
 
 type alias Model =
-    { tags : List String
-    , articles : List Article
-    , articleContent : ( Path, String )
+    { search : Search.Model
+    , article : Article.Model
     }
-
-
-type alias Article =
-    { title : String
-    , path : Path
-    }
-
-
-type alias Path =
-    String
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( { tags = []
-      , articles = []
-      , articleContent = ( "", "" )
+    let
+        ( sm, sc ) =
+            Search.init
+
+        ( am, ac ) =
+            Article.init
+    in
+    ( { search = sm
+      , article = am
       }
-    , Cmd.batch [ getTags, getArticles ]
+    , Cmd.batch [ Cmd.map SearchMsg sc, Cmd.map ArticleMsg ac ]
     )
-
-
-getTags : Cmd Msg
-getTags =
-    Http.get
-        { url = "/api/tags"
-        , expect = Http.expectJson GotTags (list string)
-        }
-
-
-getArticle : String -> Cmd Msg
-getArticle path =
-    case
-        Bytes.Encode.string path
-            |> Bytes.Encode.encode
-            |> Base64.fromBytes
-    of
-        Just artPath ->
-            Http.get
-                { url = "/api/articles/" ++ artPath
-                , expect =
-                    Http.expectString
-                        (GotArticle path)
-                }
-
-        Nothing ->
-            Cmd.none
-
-
-getArticles : Cmd Msg
-getArticles =
-    Http.get
-        { url = "/api/articles"
-        , expect = Http.expectJson GotArticlesByTag articlesDecoder
-        }
-
-
-getArticlesByTag : String -> Cmd Msg
-getArticlesByTag tag =
-    Http.get
-        { url = "/api/tags/" ++ tag
-        , expect = Http.expectJson GotArticlesByTag articlesDecoder
-        }
-
-
-articlesDecoder : Decoder (List Article)
-articlesDecoder =
-    list
-        (map2 Article
-            (field "title" string)
-            (field "path" string)
-        )
 
 
 type Msg
     = NoOp
-    | GotTags (Result Http.Error (List String))
-    | TagClicked String
-    | GotArticlesByTag (Result Http.Error (List Article))
-    | GetArticle String
-    | GotArticle String (Result Http.Error String)
+    | SearchMsg Search.Msg
+    | ArticleMsg Article.Msg
 
 
 view : Model -> Html Msg
 view m =
-    div [ class "container" ] <|
-        [ h1 [] [ text "" ]
-        , div [] (List.map (\t -> button [ HE.onClick (TagClicked t), class "button", class "button-small" ] [ text t ]) m.tags)
-        , div [] [ ul [] <| List.map (\t -> li [ HE.onClick (GetArticle t.path) ] [ text t.title ]) m.articles ]
-        , div [] <| removeYamlHeader True <| renderMarkdown m.articleContent
+    div []
+        [ div
+            [ HA.style "float" "left"
+            , HA.style "height" "100vh"
+            , HA.style "z-index" "100"
+            , HA.style "position" "relative"
+            ]
+            [ Html.map SearchMsg <| Search.view m.search ]
+        , Html.map ArticleMsg <| Article.view m.article
         ]
-
-
-removeYamlHeader : Bool -> List (Html a) -> List (Html a)
-removeYamlHeader start src =
-    case src of
-        [] ->
-            []
-
-        x :: xs ->
-            if start then
-                removeYamlHeader False xs
-
-            else if x == Html.hr [] [] then
-                xs
-
-            else
-                removeYamlHeader False xs
-
-
-renderMarkdown : ( Path, String ) -> List (Html Msg)
-renderMarkdown ( path, str ) =
-    case
-        str
-            |> MDParser.parse
-            |> Result.mapError
-                (\ee ->
-                    String.join "\n" <|
-                        List.map MDParser.deadEndToString ee
-                )
-            |> Result.andThen (\ast -> MDRenderer.render (customRenderer path) ast)
-    of
-        Ok rendered ->
-            rendered
-
-        Err errors ->
-            [ text errors ]
-
-
-customRenderer : String -> MDRenderer.Renderer (Html Msg)
-customRenderer path =
-    let
-        orig =
-            MDRenderer.defaultHtmlRenderer
-
-        normalizeLink link =
-            normalizePath <| getFolder path ++ link
-    in
-    { orig
-        | link =
-            \link content ->
-                Html.a
-                    [ href "#"
-                    , HE.onClick (GetArticle <| normalizeLink link.destination)
-                    ]
-                    content
-        , image =
-            \imageInfo ->
-                case Url.fromString imageInfo.src of
-                    Just _ ->
-                        Html.img [ Html.Attributes.src imageInfo.src ] []
-
-                    Nothing ->
-                        Html.img [ Html.Attributes.src <| "/api/images/" ++ toB64 (normalizeLink imageInfo.src) ] []
-    }
-
-
-getFolder : Path -> String
-getFolder str =
-    let
-        reg =
-            Maybe.withDefault Regex.never <|
-                Regex.fromString ".*/"
-    in
-    str
-        |> Regex.find reg
-        |> List.map .match
-        |> List.head
-        |> Maybe.withDefault ""
-
-
-normalizePath : Path -> String
-normalizePath str =
-    let
-        reg =
-            Maybe.withDefault Regex.never <|
-                Regex.fromString "^(\\.\\.?/)*"
-
-        prefix =
-            str
-                |> Regex.find reg
-                |> List.map .match
-                |> String.join ""
-    in
-    str
-        |> String.split "/"
-        |> List.foldl
-            (\segment acc ->
-                case segment of
-                    ".." ->
-                        List.drop 1 acc
-
-                    "." ->
-                        acc
-
-                    _ ->
-                        segment :: acc
-            )
-            []
-        |> List.reverse
-        |> (\l ->
-                prefix
-                    ++ String.join "/" l
-           )
-
-
-toB64 : String -> String
-toB64 str =
-    case
-        Bytes.Encode.string str
-            |> Bytes.Encode.encode
-            |> Base64.fromBytes
-    of
-        Just b ->
-            b
-
-        Nothing ->
-            ""
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case msg of
+        SearchMsg ms ->
+            case ms of
+                Search.GetArticle str ->
+                    update (ArticleMsg (Article.GetArticle str)) m
+
+                _ ->
+                    let
+                        ( sm, sc ) =
+                            Search.update ms m.search
+                    in
+                    ( { m | search = sm }, Cmd.map SearchMsg sc )
+
+        ArticleMsg ms ->
+            let
+                ( sm, sc ) =
+                    Article.update ms m.article
+            in
+            ( { m | article = sm }, Cmd.map ArticleMsg sc )
+
         NoOp ->
             ( m, Cmd.none )
-
-        GotTags res ->
-            case res of
-                Ok tags ->
-                    ( { m | tags = tags }, Cmd.none )
-
-                Err _ ->
-                    ( m, Cmd.none )
-
-        TagClicked tag ->
-            ( m, Cmd.batch [ getTags, getArticlesByTag tag ] )
-
-        GotArticlesByTag res ->
-            case res of
-                Ok articles ->
-                    ( { m | articles = articles }, Cmd.none )
-
-                Err _ ->
-                    ( m, Cmd.none )
-
-        GetArticle path ->
-            ( m, getArticle path )
-
-        GotArticle path res ->
-            case res of
-                Ok content ->
-                    ( { m | articleContent = ( path, content ) }, Cmd.none )
-
-                Err _ ->
-                    ( m, Cmd.none )
 
 
 main : Program () Model Msg
