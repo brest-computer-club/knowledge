@@ -113,11 +113,6 @@ inputToQuery (Input i) =
         (tagsToQuery i.op i.tags)
 
 
-bla : Query
-bla =
-    Comb Or (Sing "k8s") (Sing "rust")
-
-
 jsonOp : Op -> JE.Value
 jsonOp op =
     case op of
@@ -236,7 +231,6 @@ searchDiv m =
 
             else
                 [ HA.style "display" "block"
-                , HA.style "min-width" "33%"
                 ]
     in
     div display <|
@@ -244,7 +238,13 @@ searchDiv m =
         , div [] <|
             [ Html.h4 [] [ text "quick access" ]
             ]
-                ++ List.map (\t -> button [ HE.onClick (TagClicked t), class "button", class "button-small" ] [ text t ]) m.tags
+                ++ (case m.tags of
+                        [] ->
+                            [ text "-- no tag, please check the header of your markdown files --" ]
+
+                        _ ->
+                            List.map (\t -> button [ HE.onClick (TagClicked t), class "button", class "button-small" ] [ text t ]) m.tags
+                   )
         , div []
             [ Html.hr [] []
             , Html.h4 [] [ text "advanced search" ]
@@ -290,8 +290,24 @@ view m =
                         ">>"
                 ]
     in
-    div [ class "container", HA.style "padding-top" "30px" ] <|
-        [ visibilityButton m.open, searchDiv m ]
+    div
+        [ HA.style "float" "left"
+        , HA.style "height" "100vh"
+        , HA.style "z-index" "100"
+        , HA.style "position" "relative"
+        , HA.style "padding-top" "30px"
+        , if m.open then
+            HA.style "min-width" "33%"
+
+          else
+            HA.style "" ""
+        ]
+        [ div
+            [ class "container" ]
+            [ visibilityButton m.open
+            , searchDiv m
+            ]
+        ]
 
 
 updateInputByID : String -> (Input -> Input) -> Input -> Input

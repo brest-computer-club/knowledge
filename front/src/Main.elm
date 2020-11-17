@@ -38,13 +38,7 @@ type Msg
 view : Model -> Html Msg
 view m =
     div []
-        [ div
-            [ HA.style "float" "left"
-            , HA.style "height" "100vh"
-            , HA.style "z-index" "100"
-            , HA.style "position" "relative"
-            ]
-            [ Html.map SearchMsg <| Search.view m.search ]
+        [ Html.map SearchMsg <| Search.view m.search
         , Html.map ArticleMsg <| Article.view m.article
         ]
 
