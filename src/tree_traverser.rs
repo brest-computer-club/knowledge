@@ -1,3 +1,4 @@
+use crate::domain::{FileEvent, FileOp};
 use async_std::{
     sync::{Receiver, Sender},
     task,
@@ -5,7 +6,7 @@ use async_std::{
 use std::fs;
 use std::path::PathBuf;
 
-pub fn watch(rch: &Receiver<PathBuf>, fchan: &Sender<PathBuf>, dchan: &Sender<PathBuf>) {
+pub fn watch(rch: &Receiver<PathBuf>, fchan: &Sender<FileEvent>, dchan: &Sender<PathBuf>) {
     task::block_on(async {
         loop {
             match rch.recv().await {
@@ -23,7 +24,7 @@ pub fn watch(rch: &Receiver<PathBuf>, fchan: &Sender<PathBuf>, dchan: &Sender<Pa
     });
 }
 
-async fn traverse_tree(dir: &PathBuf, fchan: &Sender<PathBuf>, dchan: &Sender<PathBuf>) {
+async fn traverse_tree(dir: &PathBuf, fchan: &Sender<FileEvent>, dchan: &Sender<PathBuf>) {
     if dir.is_dir() {
         let ee = match fs::read_dir(dir) {
             Err(_) => return,
@@ -40,7 +41,13 @@ async fn traverse_tree(dir: &PathBuf, fchan: &Sender<PathBuf>, dchan: &Sender<Pa
             if path.is_dir() {
                 dchan.send(path).await;
             } else {
-                fchan.send(path).await;
+                fchan
+                    .send(FileEvent {
+                        op: FileOp::Create,
+                        path,
+                        dst: None,
+                    })
+                    .await;
             }
         }
     }

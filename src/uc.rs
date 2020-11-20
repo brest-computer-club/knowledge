@@ -6,23 +6,34 @@ use std::iter::FromIterator;
 use std::path::PathBuf;
 use std::thread;
 
-use crate::domain::{Exp, Metadata, Op};
+use crate::domain::{Exp, FileEvent, Metadata, MetadataEvent, Op};
 use crate::file_handler;
+use crate::file_watcher;
 use crate::metadata_handler;
 use crate::storage;
 use crate::tree_traverser;
 
-pub fn build_graph(p: &PathBuf, store: &'static storage::Store) {
-    let (dir_send, dir_recv): (Sender<PathBuf>, Receiver<PathBuf>) = channel(1000);
-    let (file_send, file_recv): (Sender<PathBuf>, Receiver<PathBuf>) = channel(1000);
-    let (meta_send, meta_recv): (Sender<Metadata>, Receiver<Metadata>) = channel(1000);
+pub fn build_graph_start_watcher(p: &PathBuf, store: &'static storage::Store) {
+    // the file chan is used by both file_watcher & build_graph
+    let (file_send, file_recv): (Sender<FileEvent>, Receiver<FileEvent>) = channel(1000);
 
-    let ds = dir_send.clone();
-    thread::spawn(move || tree_traverser::watch(&dir_recv, &file_send, &ds));
-    thread::spawn(move || file_handler::watch(&file_recv, &meta_send));
-    thread::spawn(move || metadata_handler::watch(&meta_recv, store));
-
-    task::block_on(async { dir_send.send(p.clone()).await });
+    {
+        // file_watcher
+        let p_clone = p.clone();
+        let file_send_clone = file_send.clone();
+        thread::spawn(move || file_watcher::watch(&p_clone, &file_send_clone, &200));
+    }
+    {
+        // build_graph
+        let (meta_send, meta_recv): (Sender<MetadataEvent>, Receiver<MetadataEvent>) =
+            channel(1000);
+        let (dir_send, dir_recv): (Sender<PathBuf>, Receiver<PathBuf>) = channel(1000);
+        let dir_send_clone = dir_send.clone();
+        thread::spawn(move || tree_traverser::watch(&dir_recv, &file_send, &dir_send_clone));
+        thread::spawn(move || file_handler::watch(&file_recv, &meta_send));
+        thread::spawn(move || metadata_handler::watch(&meta_recv, store));
+        task::block_on(async { dir_send.send(p.clone()).await });
+    }
 }
 
 // todo : path is not checked, do not expose this publicly

@@ -1,14 +1,15 @@
 use clap::{App, Arg, ArgMatches};
 use lazy_static::lazy_static;
-use std::{io, path::PathBuf};
-
 use rand::Rng;
+use simple_logger::SimpleLogger;
 use std::{env, thread};
+use std::{io, path::PathBuf};
 use webbrowser;
 
 mod api;
 mod domain;
 mod file_handler;
+mod file_watcher;
 mod metadata_handler;
 mod storage;
 mod tree_traverser;
@@ -17,6 +18,10 @@ mod uc;
 #[actix_web::main]
 async fn main() -> io::Result<()> {
     let mm = cli_setup();
+    SimpleLogger::new()
+        .with_level(log::LevelFilter::Error)
+        .init()
+        .unwrap();
 
     lazy_static! {
         static ref STORE: storage::Store = storage::Store::new();
@@ -24,7 +29,7 @@ async fn main() -> io::Result<()> {
 
     {
         let f = get_folder(&mm)?;
-        thread::spawn(move || uc::build_graph(&f, &STORE));
+        thread::spawn(move || uc::build_graph_start_watcher(&f, &STORE));
     }
 
     {

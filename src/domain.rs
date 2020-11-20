@@ -3,10 +3,18 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::path::PathBuf;
 
+#[derive(Debug)]
+pub enum MetadataEvent {
+    Create(Metadata),
+    Move(PathBuf, PathBuf),
+    Remove(PathBuf),
+    Changed(Metadata),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash, PartialOrd, Ord)]
 pub struct Metadata {
     pub path: PathBuf,
-    title: String,
+    pub title: String,
     pub tags: Vec<String>,
 }
 
@@ -130,4 +138,19 @@ mod tests {
         assert_eq!(to_hash(vec![1, 2, 3]), a.reduce());
         Ok(())
     }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct FileEvent {
+    pub op: FileOp,
+    pub path: PathBuf,
+    pub dst: Option<PathBuf>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum FileOp {
+    Create,
+    Remove,
+    Write,
+    Move,
 }

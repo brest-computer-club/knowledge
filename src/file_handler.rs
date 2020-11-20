@@ -1,22 +1,59 @@
 use async_std::sync::{Receiver, Sender};
 use async_std::task;
+use path_abs::PathAbs;
 use std::fs::File;
 use std::io::{prelude::*, BufReader, Error as ioErr, ErrorKind, Lines, Result};
 use std::path::PathBuf;
 use std::str;
 use yaml_rust::YamlLoader;
 
-use crate::domain::Metadata;
+use crate::domain::{FileEvent, FileOp, Metadata, MetadataEvent};
 
-static YAML_DELIM: &'static str = "---";
-
-pub fn watch(rch: &Receiver<PathBuf>, metach: &Sender<Metadata>) {
+pub fn watch(rch: &Receiver<FileEvent>, metach: &Sender<MetadataEvent>) {
     task::block_on(async {
         loop {
             match rch.recv().await {
-                Ok(p) => {
-                    let mc = Sender::clone(metach);
-                    task::spawn(async move { get_metadata(&p.clone(), &mc).await });
+                Ok(file_event) => {
+                    if let Ok(path) = clean_path(file_event.path.clone()) {
+                        match file_event.op {
+                            FileOp::Create => {
+                                let mc = metach.clone();
+                                task::spawn(async move {
+                                    let _ = handle_create(&path, &mc).await;
+                                });
+                            }
+
+                            FileOp::Remove => {
+                                let mc = metach.clone();
+                                task::spawn(async move {
+                                    mc.send(MetadataEvent::Remove(path)).await;
+                                });
+                            }
+
+                            FileOp::Move => {
+                                if let Some(dst) = file_event.dst {
+                                    if let Ok(new_path) = clean_path(dst) {
+                                        let mc = metach.clone();
+                                        let old_path = path.clone();
+                                        task::spawn(async move {
+                                            mc.send(MetadataEvent::Move(old_path, new_path)).await;
+                                        });
+                                    }
+                                } else {
+                                }
+                            }
+
+                            FileOp::Write => {
+                                let mc = metach.clone();
+                                task::spawn(async move {
+                                    let _ = handle_write(&path, &mc).await;
+                                });
+                            }
+                        }
+                    } else {
+                        println!("invalid path {:?}", file_event.path);
+                        continue;
+                    }
                 }
                 Err(e) => {
                     println!("file handler watch err: {}", e);
@@ -27,13 +64,43 @@ pub fn watch(rch: &Receiver<PathBuf>, metach: &Sender<Metadata>) {
     });
 }
 
-async fn get_metadata(e: &PathBuf, metach: &Sender<Metadata>) -> Result<()> {
+fn clean_path(p: PathBuf) -> Result<PathBuf> {
+    if let Ok(new_path) = PathAbs::new(p) {
+        Ok(new_path.into())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "invalid path",
+        ))
+    }
+}
+
+async fn handle_write(p: &PathBuf, mc: &Sender<MetadataEvent>) -> Result<()> {
+    let m = match get_metadata(&p).await {
+        Ok(m) => m,
+        Err(e) => return Err(e),
+    };
+
+    mc.send(MetadataEvent::Changed(m)).await;
+    Ok(())
+}
+
+async fn handle_create(p: &PathBuf, mc: &Sender<MetadataEvent>) -> Result<()> {
+    let m = match get_metadata(&p).await {
+        Ok(m) => m,
+        Err(e) => return Err(e),
+    };
+
+    mc.send(MetadataEvent::Create(m)).await;
+    Ok(())
+}
+
+async fn get_metadata(e: &PathBuf) -> Result<Metadata> {
     let file = File::open(e)?;
     let reader = BufReader::new(file);
     let yaml = get_yaml_header(reader.lines())?;
     let (title, tags) = yaml_to_meta(&yaml)?;
-    let _ = metach.send(Metadata::new(e.clone(), &title, &tags)).await;
-    Ok(())
+    Ok(Metadata::new(e.clone(), &title, &tags))
 }
 
 fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>)> {
@@ -67,6 +134,8 @@ fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>)> {
 
     Ok((title.into(), tags.into()))
 }
+
+static YAML_DELIM: &'static str = "---";
 
 fn get_yaml_header(lines: Lines<BufReader<File>>) -> Result<String> {
     let mut header = Vec::new();
@@ -109,8 +178,8 @@ mod tests {
     fn yaml_to_meta_basic() -> std::io::Result<()> {
         let yaml = "title: my cool title
 tags:
-    - rust 
-    - programming languages 
+    - rust
+    - programming languages
 ";
 
         assert_eq!(
