@@ -6,7 +6,7 @@ use std::iter::FromIterator;
 use std::path::PathBuf;
 use std::thread;
 
-use crate::domain::{Exp, FileEvent, Metadata, MetadataEvent, Op};
+use crate::domain::{ArticleRef, Exp, FileEvent, MetadataEvent, Op};
 use crate::file_handler;
 use crate::file_watcher;
 use crate::metadata_handler;
@@ -48,8 +48,8 @@ pub enum Query {
     Comb(Op, Box<Query>, Box<Query>),
 }
 
-pub fn search_by_tag(q: &Query, s: &storage::Store) -> Vec<Metadata> {
-    fn new_exp(s: &storage::Store, q: &Query) -> Exp<Metadata> {
+pub fn search_by_tag(q: &Query, s: &storage::Store) -> Vec<ArticleRef> {
+    fn new_exp(s: &storage::Store, q: &Query) -> Exp<ArticleRef> {
         match q {
             Query::Sing(tag) => Exp::Sing(match s.get_by_tag(tag) {
                 Some(res) => res.into_iter().collect(),
@@ -86,15 +86,17 @@ mod tests {
     #[test]
     fn search_sing() -> std::io::Result<()> {
         let s = &storage::Store::new();
-        let m0 = Metadata::new(PathBuf::new(), &title(0), &vec![tag(0)]);
-        let m1 = Metadata::new(PathBuf::new(), &title(1), &vec![tag(1)]);
-        s.insert(&m0);
-        s.insert(&m1);
+        let art0 = ArticleRef::new(PathBuf::new(), &title(0));
+        let art1 = ArticleRef::new(PathBuf::new(), &title(1));
+        let m0 = &Metadata::new(art0.path.clone(), &art0.title, &vec![tag(0)]);
+        let m1 = &Metadata::new(art1.path.clone(), &art1.title, &vec![tag(1)]);
+        s.insert(m0);
+        s.insert(m1);
 
-        let nothing: Vec<Metadata> = vec![]; // find a way to inline it below
+        let nothing: Vec<ArticleRef> = vec![]; // find a way to inline it below
         assert_eq!(nothing, search_by_tag(&Query::Sing("bla".to_string()), s));
-        assert_eq!(vec![m0.clone()], search_by_tag(&Query::Sing(tag(0)), s));
-        assert_eq!(vec![m1.clone()], search_by_tag(&Query::Sing(tag(1)), s));
+        assert_eq!(vec![art0], search_by_tag(&Query::Sing(tag(0)), s));
+        assert_eq!(vec![art1], search_by_tag(&Query::Sing(tag(1)), s));
         Ok(())
     }
 
@@ -103,7 +105,8 @@ mod tests {
         let s = &storage::Store::new();
         let m0 = Metadata::new(PathBuf::new(), &title(0), &vec![tag(0)]);
         let m1 = Metadata::new(PathBuf::new(), &title(1), &vec![tag(1)]);
-        let m2 = Metadata::new(PathBuf::new(), &title(2), &vec![tag(0), tag(1)]);
+        let art2 = ArticleRef::new(PathBuf::new(), &title(2));
+        let m2 = Metadata::new(art2.path.clone(), &art2.title, &vec![tag(0), tag(1)]);
         s.insert(&m0);
         s.insert(&m1);
         s.insert(&m2);
@@ -118,7 +121,7 @@ mod tests {
         );
 
         assert_eq!(
-            vec![m2],
+            vec![art2],
             search_by_tag(
                 &new_comb(Op::And, Query::Sing(tag(0)), Query::Sing(tag(1))),
                 s

@@ -11,19 +11,34 @@ pub enum MetadataEvent {
     Changed(Metadata),
 }
 
+pub type Tag = String;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash, PartialOrd, Ord)]
 pub struct Metadata {
-    pub path: PathBuf,
-    pub title: String,
-    pub tags: Vec<String>,
+    pub art: ArticleRef,
+    pub tags: Vec<Tag>,
 }
 
 impl Metadata {
     pub fn new(path: PathBuf, title: &String, tags: &Vec<String>) -> Metadata {
         Metadata {
-            path,
-            title: title.clone(),
+            art: ArticleRef::new(path, title),
             tags: tags.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash, PartialOrd, Ord)]
+pub struct ArticleRef {
+    pub path: PathBuf,
+    pub title: String,
+}
+
+impl ArticleRef {
+    pub fn new(path: PathBuf, title: &String) -> Self {
+        ArticleRef {
+            path,
+            title: title.into(),
         }
     }
 }
