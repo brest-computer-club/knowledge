@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::str;
 use yaml_rust::YamlLoader;
 
-use crate::domain::{FileEvent, FileOp, Metadata, MetadataEvent};
+use crate::domain::{FileEvent, FileOp, MetadataEvent, TaggedArticle};
 
 pub fn watch(rch: &Receiver<FileEvent>, metach: &Sender<MetadataEvent>) {
     task::block_on(async {
@@ -95,12 +95,12 @@ async fn handle_create(p: &PathBuf, mc: &Sender<MetadataEvent>) -> Result<()> {
     Ok(())
 }
 
-async fn get_metadata(e: &PathBuf) -> Result<Metadata> {
+async fn get_metadata(e: &PathBuf) -> Result<TaggedArticle> {
     let file = File::open(e)?;
     let reader = BufReader::new(file);
     let yaml = get_yaml_header(reader.lines())?;
     let (title, tags) = yaml_to_meta(&yaml)?;
-    Ok(Metadata::new(e.clone(), &title, &tags))
+    Ok(TaggedArticle::new(e.clone(), &title, &tags))
 }
 
 fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>)> {
@@ -109,7 +109,7 @@ fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>)> {
         Err(e) => return Err(ioErr::new(ErrorKind::NotFound, format!("{}", e))),
     };
 
-    if docs.len() == 0 {
+    if docs.is_empty() {
         return Err(ioErr::new(ErrorKind::NotFound, ""));
     }
 
@@ -120,22 +120,18 @@ fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>)> {
     };
 
     let mut tags = Vec::new();
-    match doc["tags"].as_vec() {
-        Some(tt) => {
-            for t in tt {
-                match t.as_str() {
-                    Some(tag) => tags.push(tag.into()),
-                    None => continue,
-                }
+    if let Some(tt) = doc["tags"].as_vec() {
+        for t in tt {
+            if let Some(tag) = t.as_str() {
+                tags.push(tag.into());
             }
         }
-        None => {}
     }
 
-    Ok((title.into(), tags.into()))
+    Ok((title.into(), tags))
 }
 
-static YAML_DELIM: &'static str = "---";
+static YAML_DELIM: &str = "---";
 
 fn get_yaml_header(lines: Lines<BufReader<File>>) -> Result<String> {
     let mut header = Vec::new();
@@ -149,12 +145,10 @@ fn get_yaml_header(lines: Lines<BufReader<File>>) -> Result<String> {
             } else {
                 copy_yaml = false;
             }
+        } else if copy_yaml {
+            header.extend(format!("{}\n", l).as_bytes().to_vec());
         } else {
-            if copy_yaml {
-                header.extend(format!("{}\n", l).as_bytes().to_vec());
-            } else {
-                break;
-            }
+            break;
         }
     }
 

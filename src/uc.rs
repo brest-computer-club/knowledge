@@ -5,41 +5,40 @@ use std::fs;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 use std::thread;
+use storage::Store;
 
-use crate::domain::{ArticleRef, Exp, FileEvent, MetadataEvent, Op};
+use crate::domain::{ArtRef, Exp, FileEvent, MetadataEvent, Op};
 use crate::file_handler;
 use crate::file_watcher;
 use crate::metadata_handler;
 use crate::storage;
 use crate::tree_traverser;
 
-pub fn build_graph_start_watcher(p: &PathBuf, store: &'static storage::Store) {
+pub fn build_graph_start_watcher(p: &PathBuf, store: &'static Store) {
     // the file chan is used by both file_watcher & build_graph
-    let (file_send, file_recv): (Sender<FileEvent>, Receiver<FileEvent>) = channel(1000);
+    let (file_send, file_rcv): (Sender<FileEvent>, Receiver<FileEvent>) = channel(1000);
 
     {
         // file_watcher
         let p_clone = p.clone();
         let file_send_clone = file_send.clone();
-        thread::spawn(move || file_watcher::watch(&p_clone, &file_send_clone, &200));
+        thread::spawn(move || file_watcher::watch(&p_clone, &file_send_clone, 200));
     }
     {
         // build_graph
-        let (meta_send, meta_recv): (Sender<MetadataEvent>, Receiver<MetadataEvent>) =
-            channel(1000);
-        let (dir_send, dir_recv): (Sender<PathBuf>, Receiver<PathBuf>) = channel(1000);
+        let (meta_send, meta_rcv): (Sender<MetadataEvent>, Receiver<MetadataEvent>) = channel(1000);
+        let (dir_send, dir_rcv): (Sender<PathBuf>, Receiver<PathBuf>) = channel(1000);
         let dir_send_clone = dir_send.clone();
-        thread::spawn(move || tree_traverser::watch(&dir_recv, &file_send, &dir_send_clone));
-        thread::spawn(move || file_handler::watch(&file_recv, &meta_send));
-        thread::spawn(move || metadata_handler::watch(&meta_recv, store));
+        thread::spawn(move || tree_traverser::watch(&dir_rcv, &dir_send_clone, &file_send));
+        thread::spawn(move || file_handler::watch(&file_rcv, &meta_send));
+        thread::spawn(move || metadata_handler::watch(&meta_rcv, store));
         task::block_on(async { dir_send.send(p.clone()).await });
     }
 }
 
 // todo : path is not checked, do not expose this publicly
 pub fn get_article_content(p: &str) -> std::io::Result<String> {
-    let content = fs::read_to_string(p)?;
-    Ok(content)
+    fs::read_to_string(p)
 }
 
 #[derive(Debug, Clone)]
@@ -48,8 +47,8 @@ pub enum Query {
     Comb(Op, Box<Query>, Box<Query>),
 }
 
-pub fn search_by_tag(q: &Query, s: &storage::Store) -> Vec<ArticleRef> {
-    fn new_exp(s: &storage::Store, q: &Query) -> Exp<ArticleRef> {
+pub fn search_by_tag(q: &Query, s: &Store) -> Vec<ArtRef> {
+    fn new_exp(s: &Store, q: &Query) -> Exp<ArtRef> {
         match q {
             Query::Sing(tag) => Exp::Sing(match s.get_by_tag(tag) {
                 Some(res) => res.into_iter().collect(),
@@ -69,7 +68,7 @@ pub fn search_by_tag(q: &Query, s: &storage::Store) -> Vec<ArticleRef> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::Op;
+    use crate::domain::{Op, TaggedArticle};
 
     // helpers
     fn new_comb(op: Op, q1: Query, q2: Query) -> Query {
@@ -85,15 +84,15 @@ mod tests {
 
     #[test]
     fn search_sing() -> std::io::Result<()> {
-        let s = &storage::Store::new();
-        let art0 = ArticleRef::new(PathBuf::new(), &title(0));
-        let art1 = ArticleRef::new(PathBuf::new(), &title(1));
-        let m0 = &Metadata::new(art0.path.clone(), &art0.title, &vec![tag(0)]);
-        let m1 = &Metadata::new(art1.path.clone(), &art1.title, &vec![tag(1)]);
+        let s = &Store::new();
+        let art0 = ArtRef::new(PathBuf::new(), &title(0));
+        let art1 = ArtRef::new(PathBuf::new(), &title(1));
+        let m0 = &TaggedArticle::new(art0.path.clone(), &art0.title, &vec![tag(0)]);
+        let m1 = &TaggedArticle::new(art1.path.clone(), &art1.title, &vec![tag(1)]);
         s.insert(m0);
         s.insert(m1);
 
-        let nothing: Vec<ArticleRef> = vec![]; // find a way to inline it below
+        let nothing: Vec<ArtRef> = vec![]; // find a way to inline it below
         assert_eq!(nothing, search_by_tag(&Query::Sing("bla".to_string()), s));
         assert_eq!(vec![art0], search_by_tag(&Query::Sing(tag(0)), s));
         assert_eq!(vec![art1], search_by_tag(&Query::Sing(tag(1)), s));
@@ -102,11 +101,11 @@ mod tests {
 
     #[test]
     fn search_comb() -> std::io::Result<()> {
-        let s = &storage::Store::new();
-        let m0 = Metadata::new(PathBuf::new(), &title(0), &vec![tag(0)]);
-        let m1 = Metadata::new(PathBuf::new(), &title(1), &vec![tag(1)]);
-        let art2 = ArticleRef::new(PathBuf::new(), &title(2));
-        let m2 = Metadata::new(art2.path.clone(), &art2.title, &vec![tag(0), tag(1)]);
+        let s = &Store::new();
+        let m0 = TaggedArticle::new(PathBuf::new(), &title(0), &vec![tag(0)]);
+        let m1 = TaggedArticle::new(PathBuf::new(), &title(1), &vec![tag(1)]);
+        let art2 = ArtRef::new(PathBuf::new(), &title(2));
+        let m2 = TaggedArticle::new(art2.path.clone(), &art2.title, &vec![tag(0), tag(1)]);
         s.insert(&m0);
         s.insert(&m1);
         s.insert(&m2);

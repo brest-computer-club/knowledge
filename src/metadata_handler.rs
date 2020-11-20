@@ -9,7 +9,7 @@ pub fn watch(rch: &Receiver<MetadataEvent>, store: &storage::Store) {
                 Ok(me) => match me {
                     MetadataEvent::Create(m) => store.insert(&m),
                     MetadataEvent::Remove(p) => store.remove(&p),
-                    MetadataEvent::Move(src, dst) => store.update_path(src, dst),
+                    MetadataEvent::Move(src, dst) => store.update_path(&src, &dst),
                     MetadataEvent::Changed(m) => store.update_meta(&m),
                 },
                 Err(_) => {

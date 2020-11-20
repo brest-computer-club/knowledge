@@ -1,13 +1,12 @@
-use crate::domain::{ArticleRef, Metadata, Tag};
+use crate::domain::{ArtRef, TaggedArticle};
 use dashmap::DashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-// TODO : for tags, keep only PathBuf & title
 #[derive(Clone, Debug)]
 pub struct Store {
-    by_tag: Arc<DashMap<Tag, Vec<ArticleRef>>>,
-    by_path: Arc<DashMap<PathBuf, Metadata>>,
+    by_tag: Arc<DashMap<String, Vec<ArtRef>>>,
+    by_path: Arc<DashMap<PathBuf, TaggedArticle>>,
 }
 
 impl Store {
@@ -18,7 +17,7 @@ impl Store {
         }
     }
 
-    pub fn insert(&self, m: &Metadata) {
+    pub fn insert(&self, m: &TaggedArticle) {
         self.by_path.insert(m.art.path.clone(), m.clone());
 
         let _ = m
@@ -41,20 +40,20 @@ impl Store {
             .collect::<Vec<()>>();
     }
 
-    pub fn update_path(&self, s: PathBuf, d: PathBuf) {
-        if let Some(v) = self.by_path.get(&s.clone()) {
-            let new_meta = Metadata::new(d.clone(), &v.art.clone().title, &v.clone().tags);
+    pub fn update_path(&self, s: &PathBuf, d: &PathBuf) {
+        if let Some(v) = self.by_path.get(s) {
+            let new_meta = TaggedArticle::new(d.clone(), &v.art.clone().title, &v.clone().tags);
             self.by_path.insert(d.clone(), new_meta.clone());
             self.update_path_for_tags(&v.tags.clone(), &v.art.path.clone(), &new_meta.art);
             {}
         }
-        self.by_path.remove(&s.clone());
+        self.by_path.remove(s);
     }
 
-    pub fn update_meta(&self, m: &Metadata) {
+    pub fn update_meta(&self, m: &TaggedArticle) {
         let art = m.clone().art;
 
-        if let Some(mut found_meta) = self.by_path.get_mut(&art.path.clone()) {
+        if let Some(mut found_meta) = self.by_path.get_mut(&art.path) {
             let tags_to_insert = m.tags.iter().filter(|t| !found_meta.tags.contains(t));
             let tags_to_remove = found_meta.tags.iter().filter(|t| !m.tags.contains(t));
             let tags_in_common = m.tags.iter().filter(|t| found_meta.tags.contains(t));
@@ -72,7 +71,7 @@ impl Store {
                                 }
                             })
                             .cloned()
-                            .collect::<Vec<ArticleRef>>();
+                            .collect::<Vec<ArtRef>>();
 
                         *to_update = new_tags_vec;
                     };
@@ -92,18 +91,18 @@ impl Store {
         }
     }
 
-    pub fn get_all_articles(&self) -> Vec<Metadata> {
+    pub fn get_all_articles(&self) -> Vec<TaggedArticle> {
         self.by_path.iter().map(|a| a.value().clone()).collect()
     }
 
-    pub fn get_by_tag(&self, tag: &Tag) -> Option<Vec<ArticleRef>> {
+    pub fn get_by_tag(&self, tag: &str) -> Option<Vec<ArtRef>> {
         if let Some(kv) = self.by_tag.get(tag) {
             return Some(kv.value().clone());
         }
         None
     }
 
-    pub fn get_all_tags(&self) -> Vec<Tag> {
+    pub fn get_all_tags(&self) -> Vec<String> {
         self.by_tag.iter().map(|a| a.key().clone()).collect()
     }
 
@@ -111,30 +110,30 @@ impl Store {
     // privates
     //
 
-    fn add_to_tag(&self, t: &Tag, art: &ArticleRef) {
+    fn add_to_tag(&self, t: &str, art: &ArtRef) {
         match self.by_tag.get_mut(t) {
             Some(mut k) => {
                 k.push(art.clone());
             }
             None => {
-                self.by_tag.insert(t.clone(), vec![art.clone()]);
+                self.by_tag.insert(t.to_owned(), vec![art.clone()]);
             }
         }
     }
 
-    fn remove_from_tag(&self, t: &Tag, art: &ArticleRef) {
+    fn remove_from_tag(&self, t: &str, art: &ArtRef) {
         self.by_tag.alter(t, |_, v| {
             v.iter().filter(|a| a.path != art.path).cloned().collect()
         });
 
-        self.by_tag.remove_if(t, |_, tag_vec| tag_vec.len() == 0);
+        self.by_tag.remove_if(t, |_, tag_vec| tag_vec.is_empty());
     }
 
     fn update_path_for_tags(
         &self,
-        tags_to_update: &Vec<String>,
+        tags_to_update: &[String],
         old_path: &PathBuf,
-        new_art: &ArticleRef,
+        new_art: &ArtRef,
     ) {
         tags_to_update
             .iter()
@@ -142,7 +141,7 @@ impl Store {
                 self.by_tag.alter(t, |_, v| {
                     vec![new_art.clone()]
                         .iter()
-                        .chain(v.iter().filter(|m| &m.path != &old_path.clone()))
+                        .chain(v.iter().filter(|m| m.path != old_path.clone()))
                         .cloned()
                         .collect()
                 })
@@ -155,14 +154,14 @@ impl Store {
 mod tests {
     use super::*;
 
-    fn art(i: i32) -> ArticleRef {
-        ArticleRef {
+    fn art(i: i32) -> ArtRef {
+        ArtRef {
             path: format!("path_{}", i).into(),
             title: format!("title_{}", i),
         }
     }
 
-    fn tags(t: Vec<i32>) -> Vec<Tag> {
+    fn tags(t: Vec<i32>) -> Vec<String> {
         t.iter().map(|i| format!("tag_{}", i)).collect()
     }
 
@@ -183,7 +182,7 @@ mod tests {
         let t2 = "tag_2".to_string();
         let t3 = "tag_3".to_string();
 
-        let old = Metadata {
+        let old = TaggedArticle {
             art: art(1),
             tags: tags(vec![1, 2]),
         };
@@ -215,7 +214,7 @@ mod tests {
                     t.iter()
                         .filter(|t| t.path == new.art.path)
                         .cloned()
-                        .collect::<Vec<ArticleRef>>()
+                        .collect::<Vec<ArtRef>>()
                 })
                 .map(|m| assert_eq!(new.art.clone(), m))
                 .collect::<Vec<()>>();
@@ -226,11 +225,11 @@ mod tests {
 
     #[test]
     fn insert() -> std::io::Result<()> {
-        let m1 = Metadata {
+        let m1 = TaggedArticle {
             art: art(1),
             tags: tags(vec![1, 2]),
         };
-        let m2 = Metadata {
+        let m2 = TaggedArticle {
             art: art(2),
             tags: tags(vec![3, 2]),
         };
@@ -268,7 +267,7 @@ mod tests {
                 t.iter()
                     .filter(|t| &t.path == p)
                     .cloned()
-                    .collect::<Vec<ArticleRef>>()
+                    .collect::<Vec<ArtRef>>()
                     .len()
             })
             .collect::<Vec<usize>>()
@@ -278,11 +277,11 @@ mod tests {
 
     #[test]
     fn remove() -> std::io::Result<()> {
-        let m1 = Metadata {
+        let m1 = TaggedArticle {
             art: art(1),
             tags: tags(vec![1, 2]),
         };
-        let m2 = Metadata {
+        let m2 = TaggedArticle {
             art: art(2),
             tags: tags(vec![2, 3]),
         };
@@ -312,11 +311,11 @@ mod tests {
     fn update_path() -> std::io::Result<()> {
         let art1 = art(1);
         let art2 = art(2);
-        let m1 = Metadata {
+        let m1 = TaggedArticle {
             art: art1.clone(),
             tags: tags(vec![1, 2]),
         };
-        let m2 = Metadata {
+        let m2 = TaggedArticle {
             art: art2,
             tags: tags(vec![2, 3]),
         };
@@ -336,7 +335,7 @@ mod tests {
             assert_eq!(3, s.by_tag.len());
         }
 
-        s.update_path(m1.art.path.clone(), new_path.clone());
+        s.update_path(&m1.art.path.clone(), &new_path.clone());
 
         {
             // check articles update
@@ -358,7 +357,7 @@ mod tests {
                     .unwrap()
                     .iter()
                     .filter(|t| t.title == art1.title)
-                    .collect::<Vec<&ArticleRef>>()
+                    .collect::<Vec<&ArtRef>>()
                     .first()
             );
 
@@ -369,7 +368,7 @@ mod tests {
                 .unwrap()
                 .iter()
                 .filter(|t| t.title == art1.title)
-                .collect::<Vec<&ArticleRef>>()
+                .collect::<Vec<&ArtRef>>()
                 .first()
                 .is_none());
         }
