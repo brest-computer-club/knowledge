@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::str;
 use yaml_rust::YamlLoader;
 
-use crate::domain::{FileEvent, FileOp, Metadata, MetadataEvent};
+use crate::domain::{FileEvent, FileOp, MetadataEvent, TaggedArticle};
 
 pub fn watch(rch: &Receiver<FileEvent>, metach: &Sender<MetadataEvent>) {
     task::block_on(async {
@@ -95,12 +95,12 @@ async fn handle_create(p: &PathBuf, mc: &Sender<MetadataEvent>) -> Result<()> {
     Ok(())
 }
 
-async fn get_metadata(e: &PathBuf) -> Result<Metadata> {
+async fn get_metadata(e: &PathBuf) -> Result<TaggedArticle> {
     let file = File::open(e)?;
     let reader = BufReader::new(file);
     let yaml = get_yaml_header(reader.lines())?;
     let (title, tags) = yaml_to_meta(&yaml)?;
-    Ok(Metadata::new(e.clone(), &title, &tags))
+    Ok(TaggedArticle::new(e.clone(), &title, &tags))
 }
 
 fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>)> {

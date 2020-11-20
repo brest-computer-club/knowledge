@@ -5,23 +5,23 @@ use std::path::PathBuf;
 
 #[derive(Debug)]
 pub enum MetadataEvent {
-    Create(Metadata),
+    Create(TaggedArticle),
     Move(PathBuf, PathBuf),
     Remove(PathBuf),
-    Changed(Metadata),
+    Changed(TaggedArticle),
 }
 
 pub type Tag = String;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash, PartialOrd, Ord)]
-pub struct Metadata {
+pub struct TaggedArticle {
     pub art: ArticleRef,
     pub tags: Vec<Tag>,
 }
 
-impl Metadata {
-    pub fn new(path: PathBuf, title: &String, tags: &Vec<String>) -> Metadata {
-        Metadata {
+impl TaggedArticle {
+    pub fn new(path: PathBuf, title: &String, tags: &Vec<String>) -> TaggedArticle {
+        TaggedArticle {
             art: ArticleRef::new(path, title),
             tags: tags.clone(),
         }

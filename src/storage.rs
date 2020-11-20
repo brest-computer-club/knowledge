@@ -1,13 +1,12 @@
-use crate::domain::{ArticleRef, Metadata, Tag};
+use crate::domain::{ArticleRef, Tag, TaggedArticle};
 use dashmap::DashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-// TODO : for tags, keep only PathBuf & title
 #[derive(Clone, Debug)]
 pub struct Store {
     by_tag: Arc<DashMap<Tag, Vec<ArticleRef>>>,
-    by_path: Arc<DashMap<PathBuf, Metadata>>,
+    by_path: Arc<DashMap<PathBuf, TaggedArticle>>,
 }
 
 impl Store {
@@ -18,7 +17,7 @@ impl Store {
         }
     }
 
-    pub fn insert(&self, m: &Metadata) {
+    pub fn insert(&self, m: &TaggedArticle) {
         self.by_path.insert(m.art.path.clone(), m.clone());
 
         let _ = m
@@ -43,7 +42,7 @@ impl Store {
 
     pub fn update_path(&self, s: PathBuf, d: PathBuf) {
         if let Some(v) = self.by_path.get(&s.clone()) {
-            let new_meta = Metadata::new(d.clone(), &v.art.clone().title, &v.clone().tags);
+            let new_meta = TaggedArticle::new(d.clone(), &v.art.clone().title, &v.clone().tags);
             self.by_path.insert(d.clone(), new_meta.clone());
             self.update_path_for_tags(&v.tags.clone(), &v.art.path.clone(), &new_meta.art);
             {}
@@ -51,7 +50,7 @@ impl Store {
         self.by_path.remove(&s.clone());
     }
 
-    pub fn update_meta(&self, m: &Metadata) {
+    pub fn update_meta(&self, m: &TaggedArticle) {
         let art = m.clone().art;
 
         if let Some(mut found_meta) = self.by_path.get_mut(&art.path.clone()) {
@@ -92,7 +91,7 @@ impl Store {
         }
     }
 
-    pub fn get_all_articles(&self) -> Vec<Metadata> {
+    pub fn get_all_articles(&self) -> Vec<TaggedArticle> {
         self.by_path.iter().map(|a| a.value().clone()).collect()
     }
 
@@ -183,7 +182,7 @@ mod tests {
         let t2 = "tag_2".to_string();
         let t3 = "tag_3".to_string();
 
-        let old = Metadata {
+        let old = TaggedArticle {
             art: art(1),
             tags: tags(vec![1, 2]),
         };
@@ -226,11 +225,11 @@ mod tests {
 
     #[test]
     fn insert() -> std::io::Result<()> {
-        let m1 = Metadata {
+        let m1 = TaggedArticle {
             art: art(1),
             tags: tags(vec![1, 2]),
         };
-        let m2 = Metadata {
+        let m2 = TaggedArticle {
             art: art(2),
             tags: tags(vec![3, 2]),
         };
@@ -278,11 +277,11 @@ mod tests {
 
     #[test]
     fn remove() -> std::io::Result<()> {
-        let m1 = Metadata {
+        let m1 = TaggedArticle {
             art: art(1),
             tags: tags(vec![1, 2]),
         };
-        let m2 = Metadata {
+        let m2 = TaggedArticle {
             art: art(2),
             tags: tags(vec![2, 3]),
         };
@@ -312,11 +311,11 @@ mod tests {
     fn update_path() -> std::io::Result<()> {
         let art1 = art(1);
         let art2 = art(2);
-        let m1 = Metadata {
+        let m1 = TaggedArticle {
             art: art1.clone(),
             tags: tags(vec![1, 2]),
         };
-        let m2 = Metadata {
+        let m2 = TaggedArticle {
             art: art2,
             tags: tags(vec![2, 3]),
         };

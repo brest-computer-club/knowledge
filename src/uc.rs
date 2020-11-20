@@ -69,7 +69,7 @@ pub fn search_by_tag(q: &Query, s: &storage::Store) -> Vec<ArticleRef> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::Op;
+    use crate::domain::{Op, TaggedArticle};
 
     // helpers
     fn new_comb(op: Op, q1: Query, q2: Query) -> Query {
@@ -88,8 +88,8 @@ mod tests {
         let s = &storage::Store::new();
         let art0 = ArticleRef::new(PathBuf::new(), &title(0));
         let art1 = ArticleRef::new(PathBuf::new(), &title(1));
-        let m0 = &Metadata::new(art0.path.clone(), &art0.title, &vec![tag(0)]);
-        let m1 = &Metadata::new(art1.path.clone(), &art1.title, &vec![tag(1)]);
+        let m0 = &TaggedArticle::new(art0.path.clone(), &art0.title, &vec![tag(0)]);
+        let m1 = &TaggedArticle::new(art1.path.clone(), &art1.title, &vec![tag(1)]);
         s.insert(m0);
         s.insert(m1);
 
@@ -103,10 +103,10 @@ mod tests {
     #[test]
     fn search_comb() -> std::io::Result<()> {
         let s = &storage::Store::new();
-        let m0 = Metadata::new(PathBuf::new(), &title(0), &vec![tag(0)]);
-        let m1 = Metadata::new(PathBuf::new(), &title(1), &vec![tag(1)]);
+        let m0 = TaggedArticle::new(PathBuf::new(), &title(0), &vec![tag(0)]);
+        let m1 = TaggedArticle::new(PathBuf::new(), &title(1), &vec![tag(1)]);
         let art2 = ArticleRef::new(PathBuf::new(), &title(2));
-        let m2 = Metadata::new(art2.path.clone(), &art2.title, &vec![tag(0), tag(1)]);
+        let m2 = TaggedArticle::new(art2.path.clone(), &art2.title, &vec![tag(0), tag(1)]);
         s.insert(&m0);
         s.insert(&m1);
         s.insert(&m2);
