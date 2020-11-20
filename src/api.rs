@@ -3,21 +3,19 @@ use crate::uc;
 use crate::uc::Query;
 use actix_cors::Cors;
 use actix_web::{dev::Server, web, App, HttpResponse, HttpServer, Responder};
-use base64;
 use rust_embed::RustEmbed;
 use serde::{Deserialize, Serialize};
 
 pub fn server(
     address: &str,
     store: &'static storage::Store,
-    dev_mode: &bool,
+    dev_mode: bool,
 ) -> Result<Server, std::io::Error> {
-    let dev_mode = dev_mode.clone();
     let addr = address.to_string();
 
     let server = HttpServer::new(move || {
         App::new()
-            .wrap(get_cors(&addr.clone(), &dev_mode))
+            .wrap(get_cors(&addr.clone(), dev_mode))
             .data(store.clone())
             .configure(static_routes)
             .configure(back_routes)
@@ -29,17 +27,17 @@ pub fn server(
     Ok(server)
 }
 
-fn get_cors(address: &String, dev_mode: &bool) -> Cors {
+fn get_cors(address: &str, dev_mode: bool) -> Cors {
     let bind_addr = &format!("http://{}", address)[..];
-    if *dev_mode {
+    if dev_mode {
         return Cors::default()
             .allowed_origin("http://localhost:8000")
-            .allowed_origin(bind_addr.clone())
+            .allowed_origin(bind_addr)
             .allowed_methods(vec!["GET", "POST"]);
     }
     Cors::default()
         .allowed_methods(vec!["GET", "POST"])
-        .allowed_origin(bind_addr.clone())
+        .allowed_origin(bind_addr)
 }
 
 fn static_routes(cfg: &mut web::ServiceConfig) {

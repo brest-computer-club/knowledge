@@ -11,34 +11,32 @@ pub enum MetadataEvent {
     Changed(TaggedArticle),
 }
 
-pub type Tag = String;
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash, PartialOrd, Ord)]
 pub struct TaggedArticle {
-    pub art: ArticleRef,
-    pub tags: Vec<Tag>,
+    pub art: ArtRef,
+    pub tags: Vec<String>,
 }
 
 impl TaggedArticle {
-    pub fn new(path: PathBuf, title: &String, tags: &Vec<String>) -> TaggedArticle {
+    pub fn new(path: PathBuf, title: &str, tags: &[String]) -> TaggedArticle {
         TaggedArticle {
-            art: ArticleRef::new(path, title),
-            tags: tags.clone(),
+            art: ArtRef::new(path, title),
+            tags: tags.to_owned(),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Hash, PartialOrd, Ord)]
-pub struct ArticleRef {
+pub struct ArtRef {
     pub path: PathBuf,
     pub title: String,
 }
 
-impl ArticleRef {
-    pub fn new(path: PathBuf, title: &String) -> Self {
-        ArticleRef {
+impl ArtRef {
+    pub fn new(path: PathBuf, title: &str) -> Self {
+        ArtRef {
             path,
-            title: title.into(),
+            title: title.to_owned(),
         }
     }
 }

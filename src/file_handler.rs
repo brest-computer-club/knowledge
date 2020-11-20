@@ -109,7 +109,7 @@ fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>)> {
         Err(e) => return Err(ioErr::new(ErrorKind::NotFound, format!("{}", e))),
     };
 
-    if docs.len() == 0 {
+    if docs.is_empty() {
         return Err(ioErr::new(ErrorKind::NotFound, ""));
     }
 
@@ -120,22 +120,18 @@ fn yaml_to_meta(s: &str) -> Result<(String, Vec<String>)> {
     };
 
     let mut tags = Vec::new();
-    match doc["tags"].as_vec() {
-        Some(tt) => {
-            for t in tt {
-                match t.as_str() {
-                    Some(tag) => tags.push(tag.into()),
-                    None => continue,
-                }
+    if let Some(tt) = doc["tags"].as_vec() {
+        for t in tt {
+            if let Some(tag) = t.as_str() {
+                tags.push(tag.into());
             }
         }
-        None => {}
     }
 
-    Ok((title.into(), tags.into()))
+    Ok((title.into(), tags))
 }
 
-static YAML_DELIM: &'static str = "---";
+static YAML_DELIM: &str = "---";
 
 fn get_yaml_header(lines: Lines<BufReader<File>>) -> Result<String> {
     let mut header = Vec::new();
@@ -149,12 +145,10 @@ fn get_yaml_header(lines: Lines<BufReader<File>>) -> Result<String> {
             } else {
                 copy_yaml = false;
             }
+        } else if copy_yaml {
+            header.extend(format!("{}\n", l).as_bytes().to_vec());
         } else {
-            if copy_yaml {
-                header.extend(format!("{}\n", l).as_bytes().to_vec());
-            } else {
-                break;
-            }
+            break;
         }
     }
 

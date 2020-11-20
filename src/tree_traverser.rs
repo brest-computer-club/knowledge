@@ -6,25 +6,19 @@ use async_std::{
 use std::fs;
 use std::path::PathBuf;
 
-pub fn watch(rch: &Receiver<PathBuf>, fchan: &Sender<FileEvent>, dchan: &Sender<PathBuf>) {
+pub fn watch(dir_rcv: &Receiver<PathBuf>, dir_send: &Sender<PathBuf>, fe_send: &Sender<FileEvent>) {
     task::block_on(async {
         loop {
-            match rch.recv().await {
-                Ok(p) => {
-                    let fc = Sender::clone(fchan);
-                    let dc = Sender::clone(dchan);
-                    task::spawn(async move { traverse_tree(&p.clone(), &fc, &dc).await });
-                }
-                Err(e) => {
-                    println!("tree_traverser watch err: {}", e);
-                    continue;
-                }
+            if let Ok(p) = dir_rcv.recv().await {
+                let dc = Sender::clone(dir_send);
+                let fc = Sender::clone(fe_send);
+                task::spawn(async move { traverse_tree(&p.clone(), &dc, &fc).await });
             };
         }
     });
 }
 
-async fn traverse_tree(dir: &PathBuf, fchan: &Sender<FileEvent>, dchan: &Sender<PathBuf>) {
+async fn traverse_tree(dir: &PathBuf, dir_send: &Sender<PathBuf>, fe_send: &Sender<FileEvent>) {
     if dir.is_dir() {
         let ee = match fs::read_dir(dir) {
             Err(_) => return,
@@ -39,9 +33,9 @@ async fn traverse_tree(dir: &PathBuf, fchan: &Sender<FileEvent>, dchan: &Sender<
 
             let path = entry.path();
             if path.is_dir() {
-                dchan.send(path).await;
+                dir_send.send(path).await;
             } else {
-                fchan
+                fe_send
                     .send(FileEvent {
                         op: FileOp::Create,
                         path,

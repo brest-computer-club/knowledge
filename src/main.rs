@@ -4,7 +4,6 @@ use rand::Rng;
 use simple_logger::SimpleLogger;
 use std::{env, thread};
 use std::{io, path::PathBuf};
-use webbrowser;
 
 mod api;
 mod domain;
@@ -40,7 +39,7 @@ async fn main() -> io::Result<()> {
             thread::spawn(move || webbrowser::open(&url));
         }
 
-        api::server(&bind_addr, &STORE, &dev_mode)?.await
+        api::server(&bind_addr, &STORE, dev_mode)?.await
     }
 }
 
@@ -74,7 +73,7 @@ fn cli_setup() -> ArgMatches {
 }
 
 fn get_folder(mm: &ArgMatches) -> io::Result<PathBuf> {
-    let f: String = mm.value_of_t("folder").unwrap_or("".to_string());
+    let f: String = mm.value_of_t("folder").unwrap_or_else(|_| "".to_string());
     if f == "" {
         return env::current_dir();
     }
@@ -88,7 +87,7 @@ fn get_listen_port(mm: &ArgMatches) -> u16 {
     }
 
     mm.value_of_t("port")
-        .unwrap_or(rand::thread_rng().gen_range(3000, 10000))
+        .unwrap_or_else(|_| rand::thread_rng().gen_range(3000, 10000))
 }
 
 fn in_dev_mode(mm: &ArgMatches) -> bool {

@@ -12,12 +12,12 @@ use std::{io, path::PathBuf, sync::mpsc::channel, time::Duration};
 pub fn watch(
     root_path: &PathBuf,
     send_chan: &Sender<FileEvent>,
-    debounce: &u64,
+    debounce: u64,
 ) -> Result<(), io::Error> {
     info!("watching for file changes in {:?}", root_path.clone());
 
     let (tx, rx) = channel();
-    let mut w = match watcher(tx, Duration::from_millis(debounce.clone())) {
+    let mut w = match watcher(tx, Duration::from_millis(debounce)) {
         Ok(w) => w,
         Err(e) => {
             return Err(io::Error::new(
@@ -102,7 +102,7 @@ mod tests {
         let (tx, rx): (Sender<FileEvent>, Receiver<FileEvent>) = channel(1000);
 
         let debounce: u64 = 1;
-        thread::spawn(move || watch(&dir.path().to_path_buf(), &tx.clone(), &debounce));
+        thread::spawn(move || watch(&dir.path().to_path_buf(), &tx.clone(), debounce));
         thread::sleep(std::time::Duration::from_millis(debounce + 10)); // looks fragile ?
 
         // Create
