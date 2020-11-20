@@ -34,12 +34,13 @@ tags:
 - [x] handle relative links between "articles"
 - [x] handle local and distant images 
 - [x] use a random port to avoid conflicts 
+- [x] more complex tag combination search
+- [x] update on file change
 
 ## TODO
-- [ ] update on file change
-- [ ] add circle-ci
-- [ ] more complex tag combination search
 - [ ] handle local svg
+- [ ] update frontend on change 
+- [ ] cross-compile to OSX & Windows
 
 ## Develop
 
