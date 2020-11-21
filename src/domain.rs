@@ -18,9 +18,15 @@ pub struct TaggedArticle {
 }
 
 impl TaggedArticle {
-    pub fn new(path: PathBuf, title: &str, tags: &[String]) -> TaggedArticle {
+    pub fn new(path: PathBuf, title: &str, tags: &[String]) -> Self {
         TaggedArticle {
             art: ArtRef::new(path, title),
+            tags: tags.to_owned(),
+        }
+    }
+    pub fn new_from_art(art: &ArtRef, tags: &[String]) -> Self {
+        TaggedArticle {
+            art: art.to_owned(),
             tags: tags.to_owned(),
         }
     }

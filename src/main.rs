@@ -5,6 +5,8 @@ use simple_logger::SimpleLogger;
 use std::{env, thread};
 use std::{io, path::PathBuf};
 
+use storage::Store;
+
 mod api;
 mod domain;
 mod file_handler;
@@ -16,14 +18,11 @@ mod uc;
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
+    init_logger();
     let mm = cli_setup();
-    SimpleLogger::new()
-        .with_level(log::LevelFilter::Error)
-        .init()
-        .unwrap();
 
     lazy_static! {
-        static ref STORE: storage::Store = storage::Store::new();
+        static ref STORE: Store = Store::new();
     }
 
     {
@@ -41,6 +40,13 @@ async fn main() -> io::Result<()> {
 
         api::server(&bind_addr, &STORE, dev_mode)?.await
     }
+}
+
+fn init_logger() {
+    SimpleLogger::new()
+        .with_level(log::LevelFilter::Error)
+        .init()
+        .unwrap();
 }
 
 fn cli_setup() -> ArgMatches {
@@ -73,8 +79,8 @@ fn cli_setup() -> ArgMatches {
 }
 
 fn get_folder(mm: &ArgMatches) -> io::Result<PathBuf> {
-    let f: String = mm.value_of_t("folder").unwrap_or_else(|_| "".to_string());
-    if f == "" {
+    let f: String = mm.value_of_t("folder").unwrap_or_else(|_| String::new());
+    if f.is_empty() {
         return env::current_dir();
     }
 

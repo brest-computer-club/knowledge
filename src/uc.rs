@@ -16,23 +16,23 @@ use crate::tree_traverser;
 
 pub fn build_graph_start_watcher(p: &PathBuf, store: &'static Store) {
     // the file chan is used by both file_watcher & build_graph
-    let (file_send, file_rcv): (Sender<FileEvent>, Receiver<FileEvent>) = channel(1000);
+    let (file_send, file_rcv): (Sender<FileEvent>, Receiver<FileEvent>) = channel(100);
 
     {
         // file_watcher
-        let p_clone = p.clone();
-        let file_send_clone = file_send.clone();
-        thread::spawn(move || file_watcher::watch(&p_clone, &file_send_clone, 200));
+        let p_ = p.clone();
+        let file_send_ = file_send.clone();
+        thread::spawn(move || file_watcher::watch(&p_, &file_send_, 200));
     }
     {
         // build_graph
-        let (meta_send, meta_rcv): (Sender<MetadataEvent>, Receiver<MetadataEvent>) = channel(1000);
-        let (dir_send, dir_rcv): (Sender<PathBuf>, Receiver<PathBuf>) = channel(1000);
-        let dir_send_clone = dir_send.clone();
-        thread::spawn(move || tree_traverser::watch(&dir_rcv, &dir_send_clone, &file_send));
+        let (meta_send, meta_rcv): (Sender<MetadataEvent>, Receiver<MetadataEvent>) = channel(100);
+        let (dir_send, dir_rcv): (Sender<PathBuf>, Receiver<PathBuf>) = channel(100);
+        let dir_send_ = dir_send.clone();
+        thread::spawn(move || tree_traverser::watch(&dir_rcv, &dir_send, &file_send));
         thread::spawn(move || file_handler::watch(&file_rcv, &meta_send));
         thread::spawn(move || metadata_handler::watch(&meta_rcv, store));
-        task::block_on(async { dir_send.send(p.clone()).await });
+        task::block_on(async { dir_send_.send(p.clone()).await });
     }
 }
 
@@ -87,8 +87,8 @@ mod tests {
         let s = &Store::new();
         let art0 = ArtRef::new(PathBuf::new(), &title(0));
         let art1 = ArtRef::new(PathBuf::new(), &title(1));
-        let m0 = &TaggedArticle::new(art0.path.clone(), &art0.title, &vec![tag(0)]);
-        let m1 = &TaggedArticle::new(art1.path.clone(), &art1.title, &vec![tag(1)]);
+        let m0 = &TaggedArticle::new_from_art(&art0, &vec![tag(0)]);
+        let m1 = &TaggedArticle::new_from_art(&art1, &vec![tag(1)]);
         s.insert(m0);
         s.insert(m1);
 
@@ -104,8 +104,9 @@ mod tests {
         let s = &Store::new();
         let m0 = TaggedArticle::new(PathBuf::new(), &title(0), &vec![tag(0)]);
         let m1 = TaggedArticle::new(PathBuf::new(), &title(1), &vec![tag(1)]);
+
         let art2 = ArtRef::new(PathBuf::new(), &title(2));
-        let m2 = TaggedArticle::new(art2.path.clone(), &art2.title, &vec![tag(0), tag(1)]);
+        let m2 = TaggedArticle::new_from_art(&art2, &vec![tag(0), tag(1)]);
         s.insert(&m0);
         s.insert(&m1);
         s.insert(&m2);
