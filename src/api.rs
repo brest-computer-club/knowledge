@@ -1,3 +1,4 @@
+use crate::domain;
 use crate::storage;
 use crate::uc;
 use crate::uc::Query;
@@ -15,7 +16,7 @@ pub fn server(
 
     let server = HttpServer::new(move || {
         App::new()
-            .wrap(get_cors(&addr.clone(), dev_mode))
+            .wrap(set_cors(&addr.clone(), dev_mode))
             .data(store.clone())
             .configure(static_routes)
             .configure(back_routes)
@@ -27,7 +28,7 @@ pub fn server(
     Ok(server)
 }
 
-fn get_cors(address: &str, dev_mode: bool) -> Cors {
+fn set_cors(address: &str, dev_mode: bool) -> Cors {
     let bind_addr = &format!("http://{}", address)[..];
     if dev_mode {
         return Cors::default()
@@ -55,25 +56,13 @@ fn back_routes(cfg: &mut web::ServiceConfig) {
             .route("/search-by-tags", web::post().to(search_by_tag))
             .route("/articles", web::get().to(get_all_articles))
             .route("/articles/{path}", web::get().to(get_article_by_path))
-            .route("/images/{path}", web::get().to(get_asset_by_path))
-            .route("/test", web::get().to(test_ser)),
+            .route("/images/{path}", web::get().to(get_asset_by_path)),
     );
 }
-use crate::domain;
-async fn test_ser() -> impl Responder {
-    let bla = uc::Query::Comb(
-        domain::Op::Or,
-        Box::new(uc::Query::Comb(
-            domain::Op::And,
-            Box::new(uc::Query::Sing("first".to_string())),
-            Box::new(uc::Query::Sing("first".to_string())),
-        )),
-        Box::new(uc::Query::Sing("second".to_string())),
-    );
 
-    HttpResponse::Ok().json(JsonQuery::from_uc(&bla))
-}
+//
 // frontend routes
+//
 #[derive(RustEmbed)]
 #[folder = "./front/public"]
 struct Asset;
@@ -93,8 +82,9 @@ async fn serve_static(f: StaticFile, _: ()) -> impl Responder {
     HttpResponse::Ok().body(file)
 }
 
-// back routes
-
+//
+// backend routes
+//
 async fn get_by_tag(store: web::Data<storage::Store>, tag: web::Path<String>) -> impl Responder {
     HttpResponse::Ok().json(store.get_by_tag(&tag.into_inner()))
 }
@@ -145,17 +135,6 @@ enum JsonQuery {
 }
 
 impl JsonQuery {
-    fn from_uc(q: &Query) -> JsonQuery {
-        match &q {
-            Query::Sing(tag) => JsonQuery::Sing { val: tag.clone() },
-            Query::Comb(op, qa, qb) => JsonQuery::Comb {
-                op: op.clone(),
-                qa: Box::new(JsonQuery::from_uc(qa)),
-                qb: Box::new(JsonQuery::from_uc(qb)),
-            },
-        }
-    }
-
     fn to_uc(jq: &JsonQuery) -> Query {
         match &jq {
             JsonQuery::Sing { val } => Query::Sing(val.clone()),

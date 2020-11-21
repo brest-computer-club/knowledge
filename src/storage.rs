@@ -95,11 +95,11 @@ impl Store {
         self.by_path.iter().map(|a| a.value().clone()).collect()
     }
 
-    pub fn get_by_tag(&self, tag: &str) -> Option<Vec<ArtRef>> {
+    pub fn get_by_tag(&self, tag: &str) -> Vec<ArtRef> {
         if let Some(kv) = self.by_tag.get(tag) {
-            return Some(kv.value().clone());
+            return kv.value().clone();
         }
-        None
+        vec![]
     }
 
     pub fn get_all_tags(&self) -> Vec<String> {

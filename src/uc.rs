@@ -1,6 +1,5 @@
 use async_std::sync::{channel, Receiver, Sender};
 use async_std::task;
-use std::collections::HashSet;
 use std::fs;
 use std::iter::FromIterator;
 use std::path::PathBuf;
@@ -36,11 +35,6 @@ pub fn build_graph_start_watcher(p: &PathBuf, store: &'static Store) {
     }
 }
 
-// todo : path is not checked, do not expose this publicly
-pub fn get_article_content(p: &str) -> std::io::Result<String> {
-    fs::read_to_string(p)
-}
-
 #[derive(Debug, Clone)]
 pub enum Query {
     Sing(String),
@@ -50,10 +44,7 @@ pub enum Query {
 pub fn search_by_tag(q: &Query, s: &Store) -> Vec<ArtRef> {
     fn new_exp(s: &Store, q: &Query) -> Exp<ArtRef> {
         match q {
-            Query::Sing(tag) => Exp::Sing(match s.get_by_tag(tag) {
-                Some(res) => res.into_iter().collect(),
-                None => HashSet::new(),
-            }),
+            Query::Sing(tag) => Exp::Sing(s.get_by_tag(tag).into_iter().collect()),
             Query::Comb(op, q1, q2) => Exp::Comb(
                 op.clone(),
                 Box::new(new_exp(s, q1)),
@@ -63,6 +54,11 @@ pub fn search_by_tag(q: &Query, s: &Store) -> Vec<ArtRef> {
     }
 
     Vec::from_iter(new_exp(s, q).reduce())
+}
+
+// todo : path is not checked, do not expose this publicly
+pub fn get_article_content(p: &str) -> std::io::Result<String> {
+    fs::read_to_string(p)
 }
 
 #[cfg(test)]
