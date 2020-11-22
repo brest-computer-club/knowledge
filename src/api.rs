@@ -56,7 +56,7 @@ fn back_routes(cfg: &mut web::ServiceConfig) {
             .route("/search-by-tags", web::post().to(search_by_tag))
             .route("/articles", web::get().to(get_all_articles))
             .route("/articles/{path}", web::get().to(get_article_by_path))
-            .route("/images/{path}", web::get().to(get_asset_by_path)),
+            .route("/assets/{path}", web::get().to(get_asset_by_path)),
     );
 }
 
@@ -96,11 +96,14 @@ async fn get_all_articles(store: web::Data<storage::Store>) -> impl Responder {
 async fn get_all_tags(store: web::Data<storage::Store>) -> impl Responder {
     HttpResponse::Ok().json(store.get_all_tags())
 }
+use actix_web::http::header::ContentType;
 
 async fn get_article_by_path(path: web::Path<String>) -> impl Responder {
     let p = decode_path(path);
     let resp = uc::get_article_content(&p).unwrap();
-    HttpResponse::Ok().body(resp)
+    let mut builder = HttpResponse::Ok();
+    builder.set(ContentType::plaintext());
+    builder.body(resp)
 }
 
 async fn get_asset_by_path(path: web::Path<String>) -> impl Responder {

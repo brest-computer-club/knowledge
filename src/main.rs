@@ -18,6 +18,8 @@ mod uc;
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
+    welcome();
+
     init_logger();
     let mm = cli_setup();
 
@@ -47,6 +49,10 @@ fn init_logger() {
         .with_level(log::LevelFilter::Error)
         .init()
         .unwrap();
+}
+
+fn welcome() {
+    println!("Knowledge by the brest computer club (https://brestcomputer.club)");
 }
 
 fn cli_setup() -> ArgMatches {

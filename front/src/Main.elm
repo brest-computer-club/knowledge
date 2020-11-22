@@ -3,7 +3,6 @@ module Main exposing (main)
 import Article
 import Browser
 import Html exposing (Html, div)
-import Html.Attributes as HA
 import Search
 
 
@@ -77,5 +76,5 @@ main =
         , onUrlRequest = \_ -> NoOp
         , subscriptions = \_ -> Sub.none
         , update = update
-        , view = \m -> { title = "knowledge", body = [ view m ] }
+        , view = \m -> { title = "knowledge by the brest computer club", body = [ view m ] }
         }

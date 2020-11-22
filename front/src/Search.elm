@@ -9,6 +9,7 @@ import Html.Events as HE exposing (onClick)
 import Http
 import Json.Decode as JD exposing (field, list, string)
 import Json.Encode as JE
+import Regex
 
 
 port notifyNewInput : ( String, List String ) -> Cmd msg
@@ -22,6 +23,7 @@ type alias Model =
     , tags : List String
     , articles : List Article
     , open : Bool
+    , filter : String
     }
 
 
@@ -155,6 +157,7 @@ type Msg
     | Search Query
     | ToggleVisibility
     | InputChanged String InputModif
+    | FilterUpdate String
 
 
 type InputModif
@@ -168,6 +171,7 @@ init =
       , articles = []
       , inputs = inputFactory "root"
       , open = True
+      , filter = ""
       }
     , Cmd.batch [ Api.getTags GotTags, Api.getArticles GotArticles, notifyNewInput ( "root", [] ) ]
     )
@@ -187,12 +191,16 @@ inputDiv (Input i) =
             case i.op of
                 Or ->
                     div
-                        [ HE.onClick <| InputChanged i.id (InputOp And) ]
+                        [ HE.onClick <| InputChanged i.id (InputOp And)
+                        , HA.style "cursor" "pointer"
+                        ]
                         [ text "any" ]
 
                 And ->
                     div
-                        [ HE.onClick <| InputChanged i.id (InputOp Or) ]
+                        [ HE.onClick <| InputChanged i.id (InputOp Or)
+                        , HA.style "cursor" "pointer"
+                        ]
                         [ text "all" ]
     in
     div []
@@ -222,6 +230,20 @@ inputDiv (Input i) =
         ]
 
 
+filterResults : String -> List Article -> List Article
+filterResults str articles =
+    if str == "" then
+        articles
+
+    else
+        let
+            reg =
+                Maybe.withDefault Regex.never <|
+                    Regex.fromString (".*" ++ str ++ ".*")
+        in
+        List.filter (\a -> Regex.contains reg a.title) articles
+
+
 searchDiv : Model -> Html Msg
 searchDiv m =
     let
@@ -234,16 +256,26 @@ searchDiv m =
                 ]
     in
     div display <|
-        [ Html.h3 [] [ text "search" ]
+        [ Html.h3 [] [ text "Knowledge" ]
         , div [] <|
             [ Html.h4 [] [ text "quick access" ]
             ]
                 ++ (case m.tags of
                         [] ->
-                            [ text "-- no tag, please check the header of your markdown files --" ]
+                            [ text "-- no tag found, please check the header of your markdown files --" ]
 
                         _ ->
-                            List.map (\t -> button [ HE.onClick (TagClicked t), class "button", class "button-small" ] [ text t ]) m.tags
+                            List.map
+                                (\t ->
+                                    button
+                                        [ HE.onClick (TagClicked t)
+                                        , class "button"
+                                        , class "button-small"
+                                        ]
+                                        [ text t ]
+                                )
+                            <|
+                                List.sort m.tags
                    )
         , div []
             [ Html.hr [] []
@@ -266,12 +298,25 @@ searchDiv m =
             ]
             [ Html.hr [] []
             , Html.h4 [] [ text "results" ]
-            , case m.articles of
-                [] ->
-                    text "-- no result --"
+            , div []
+                [ text "filter"
+                , Html.input [ HA.value m.filter, HE.onInput FilterUpdate ] []
+                ]
+            , div
+                [ HA.style "max-height" "300px"
+                , HA.style "overflow-y" "auto"
+                ]
+                [ case m.articles of
+                    [] ->
+                        text "-- no result --"
 
-                _ ->
-                    ul [] <| List.map (\t -> li [ HE.onClick (GetArticle t.path) ] [ text t.title ]) m.articles
+                    _ ->
+                        ul [] <|
+                            List.map (\t -> li [ HE.onClick (GetArticle t.path), HA.style "cursor" "pointer" ] [ text t.title ]) <|
+                                List.sortBy .title <|
+                                    filterResults m.filter <|
+                                        m.articles
+                ]
             ]
         ]
 
@@ -291,11 +336,14 @@ view m =
                 ]
     in
     div
-        [ HA.style "float" "left"
-        , HA.style "height" "100vh"
+        [ HA.style "height" "100vh"
         , HA.style "z-index" "100"
-        , HA.style "position" "relative"
+        , HA.style "position" "fixed"
+        , HA.style "background" "white"
+        , HA.style "border-right" "1px solid #e0e0e0"
         , HA.style "padding-top" "30px"
+        , HA.style "max-width" "33%"
+        , HA.style "overflow-y" "auto"
         , if m.open then
             HA.style "min-width" "33%"
 
@@ -370,6 +418,9 @@ inputFactory id =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case msg of
+        FilterUpdate val ->
+            ( { m | filter = val }, Cmd.none )
+
         Search q ->
             ( m, Api.postSearchTags (jsonQuery q) GotArticles )
 

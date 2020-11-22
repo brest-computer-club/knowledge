@@ -94,6 +94,52 @@ renderMarkdown ( path, str ) =
             [ text errors ]
 
 
+isDistantLink : String -> Bool
+isDistantLink str =
+    let
+        reg =
+            Maybe.withDefault Regex.never <|
+                Regex.fromString "^http.*"
+    in
+    Regex.contains reg str
+
+
+isLocalMarkdown : String -> Bool
+isLocalMarkdown str =
+    let
+        reg =
+            Maybe.withDefault Regex.never <|
+                Regex.fromString ".*md$"
+    in
+    Regex.contains reg str
+
+
+type DocType
+    = Distant String
+    | LocalAsset String
+    | OtherArticle String
+
+
+docType : String -> String -> DocType
+docType path url =
+    let
+        normalizeLink link =
+            normalizePath <| getFolder path ++ link
+    in
+    if isDistantLink url then
+        Distant url
+
+    else if isLocalMarkdown url then
+        OtherArticle <|
+            normalizeLink url
+
+    else
+        LocalAsset <|
+            "/api/assets/"
+                ++ toB64
+                    (normalizeLink url)
+
+
 customRenderer : String -> MDRenderer.Renderer (Html Msg)
 customRenderer path =
     let
@@ -106,19 +152,62 @@ customRenderer path =
     { orig
         | link =
             \link content ->
-                Html.a
-                    [ href "#"
-                    , HE.onClick (GetArticle <| normalizeLink link.destination)
-                    ]
-                    content
+                case docType path link.destination of
+                    Distant url ->
+                        Html.a
+                            [ href url
+                            , HA.target "_blank"
+                            ]
+                            content
+
+                    LocalAsset url ->
+                        Html.a
+                            [ href url
+                            , HA.target "_blank"
+                            ]
+                            content
+
+                    OtherArticle url ->
+                        Html.a
+                            [ href "#"
+                            , HE.onClick (GetArticle url)
+                            ]
+                            content
         , image =
             \imageInfo ->
                 case Url.fromString imageInfo.src of
                     Just _ ->
-                        Html.img [ HA.src imageInfo.src ] []
+                        Html.img
+                            [ HA.style "max-width" "100%"
+                            , HA.src imageInfo.src
+                            ]
+                            []
 
                     Nothing ->
-                        Html.img [ HA.src <| "/api/images/" ++ toB64 (normalizeLink imageInfo.src) ] []
+                        let
+                            imgPath =
+                                "/api/assets/"
+                                    ++ toB64
+                                        (normalizeLink imageInfo.src)
+
+                            isSVG =
+                                Regex.contains (Maybe.withDefault Regex.never <| Regex.fromString "[a-z]+") imageInfo.src
+                        in
+                        if isSVG then
+                            Html.object
+                                [ HA.type_ "image/svg+xml"
+                                , HA.attribute "data" imgPath
+                                , HA.style "width" "100%"
+                                , HA.style "min-height" "400px"
+                                ]
+                                []
+
+                        else
+                            Html.img
+                                [ HA.style "max-width" "100%"
+                                , HA.src imgPath
+                                ]
+                                []
     }
 
 
