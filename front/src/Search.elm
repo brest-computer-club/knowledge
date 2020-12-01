@@ -24,6 +24,7 @@ type alias Model =
     , articles : List Article
     , open : Bool
     , filter : String
+    , quickAccessfilter : String
     }
 
 
@@ -158,6 +159,7 @@ type Msg
     | ToggleVisibility
     | InputChanged String InputModif
     | FilterUpdate String
+    | QuickAccessFilterUpdate String
 
 
 type InputModif
@@ -172,6 +174,7 @@ init =
       , inputs = inputFactory "root"
       , open = True
       , filter = ""
+      , quickAccessfilter = ""
       }
     , Cmd.batch [ Api.getTags GotTags, Api.getArticles GotArticles, notifyNewInput ( "root", [] ) ]
     )
@@ -230,6 +233,20 @@ inputDiv (Input i) =
         ]
 
 
+filterTags : String -> List String -> List String
+filterTags str tags =
+    if str == "" then
+        tags
+
+    else
+        let
+            reg =
+                Maybe.withDefault Regex.never <|
+                    Regex.fromString (".*" ++ str ++ ".*")
+        in
+        List.filter (\t -> Regex.contains reg t) tags
+
+
 filterResults : String -> List Article -> List Article
 filterResults str articles =
     if str == "" then
@@ -257,26 +274,37 @@ searchDiv m =
     in
     div display <|
         [ Html.h3 [] [ text "Knowledge" ]
-        , div [] <|
+        , div
+            []
+          <|
             [ Html.h4 [] [ text "quick access" ]
+            , div []
+                [ text "filter"
+                , Html.input [ HA.value m.quickAccessfilter, HE.onInput QuickAccessFilterUpdate ] []
+                ]
             ]
-                ++ (case m.tags of
-                        [] ->
-                            [ text "-- no tag found, please check the header of your markdown files --" ]
+        , div
+            [ HA.style "max-height" "130px"
+            , HA.style "overflow" "auto"
+            ]
+          <|
+            case m.tags of
+                [] ->
+                    [ text "-- no tag found, please check the header of your markdown files --" ]
 
-                        _ ->
-                            List.map
-                                (\t ->
-                                    button
-                                        [ HE.onClick (TagClicked t)
-                                        , class "button"
-                                        , class "button-small"
-                                        ]
-                                        [ text t ]
-                                )
-                            <|
-                                List.sort m.tags
-                   )
+                _ ->
+                    List.map
+                        (\t ->
+                            button
+                                [ HE.onClick (TagClicked t)
+                                , class "button"
+                                , class "button-small"
+                                ]
+                                [ text t ]
+                        )
+                    <|
+                        List.sort <|
+                            filterTags m.quickAccessfilter m.tags
         , div []
             [ Html.hr [] []
             , Html.h4 [] [ text "advanced search" ]
@@ -418,6 +446,9 @@ inputFactory id =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg m =
     case msg of
+        QuickAccessFilterUpdate val ->
+            ( { m | quickAccessfilter = val }, Cmd.none )
+
         FilterUpdate val ->
             ( { m | filter = val }, Cmd.none )
 

@@ -61,8 +61,14 @@ update msg m =
             let
                 ( sm, sc ) =
                     Article.update ms m.article
+
+                currSearch =
+                    m.search
+
+                s =
+                    { currSearch | open = False }
             in
-            ( { m | article = sm }, Cmd.map ArticleMsg sc )
+            ( { m | article = sm, search = s }, Cmd.map ArticleMsg sc )
 
         NoOp ->
             ( m, Cmd.none )
