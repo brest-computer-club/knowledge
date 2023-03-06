@@ -10,7 +10,7 @@ actix-web = "3" # web framework
 async-std = { version = "1.7.0", features = ["unstable", "attributes"] }
 
 # front
-rust-embed="3.0.0" # load front assets in binary
+rust-embed="6.4.0" # load front assets in binary
 webbrowser = "0.5.5" # open the default browser
 
 #back
